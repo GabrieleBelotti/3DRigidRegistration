@@ -86,6 +86,15 @@ private:
 	bool shrinking = false;
 	bool RTplan = false;
 
+	/* enumerators */
+	enum MetricSelection
+	{
+		MMI,
+		MSE,
+	};
+
+	MetricSelection RegistrationMetric = MMI;
+
 	/* operators */
 	const double dtr = (atan(1.0) * 4.0) / 180.0;
 

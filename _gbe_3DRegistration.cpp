@@ -223,8 +223,8 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 		{
 			argc--; argv++;
 			ok = true;
-			RTplanFilename = argv[1];
-			RTplan = true;
+			this->RTplanFilename = argv[1];
+			this->RTplan = true;
 			argc--; argv++;
 		}
 
@@ -262,18 +262,18 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			argc--; argv++;
 			this->ResampleSpacing[2] = atof(argv[1]);
 			argc--; argv++;
-			resample = true;
-			resolution = true;
+			this->resample = true;
+			this->resolution = true;
 			continue;
 		}
 
 		if ((this->ok == false) && (strcmp(argv[1], "-resample") == 0))
 		{
 			argc--; argv++;
-			ok = true;
-			shrinkFactor = atof(argv[1]);
-			resample = true;
-			shrinking = true;
+			this->ok = true;
+			this->shrinkFactor = atof(argv[1]);
+			this->resample = true;
+			this->shrinking = true;
 			continue;
 		}
 
@@ -321,12 +321,14 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			if (!strcmp(argv[1], "1"))
 			{
 				std::cout << "Multimodality selected\n";
+				this->RegistrationMetric = MMI;
 				argc--;
 				argv++;
 			}
 			else if (!strcmp(argv[1], "2"))
 			{
 				std::cout << "Monomodality selected\n";
+				this->RegistrationMetric = MSE;
 				argc--;
 				argv++;
 			}
@@ -350,6 +352,10 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			}
 		}
 	}
+	if (this->RegistrationMetric == 0)
+		this->Initialize<_3DRegistration::MIMetricType>();
+	else
+		this->Initialize<_3DRegistration::MeanSquaresMetricType>();
 }
 
 
@@ -810,6 +816,7 @@ bool _3DRegistration::Initialize()
 	
 	if (verbose)
 		std::cout << "Create Initial transform\n";
+	initialTransform->SetIdentity();
 	initializer->SetTransform(initialTransform);
 	initializer->SetFixedImage(fixedImage);
 	initializer->SetMovingImage(movingImage);
@@ -837,7 +844,6 @@ bool _3DRegistration::Initialize()
 	//axis[2] = 1.0;
 	//const double angle = 0;
 	//rotation.Set(axis, angle);
-	initialTransform->SetIdentity();
 	
 	if (verbose)
 		std::cout << "Done \n";
