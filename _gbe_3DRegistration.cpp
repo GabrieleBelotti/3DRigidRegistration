@@ -222,9 +222,16 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 		if ((ok == false) && (strcmp(argv[1], "-rt") == 0) && (customized_iso == false))
 		{
 			argc--; argv++;
+			std::cout << "RTplan reading\n";
 			ok = true;
 			this->RTplanFilename = argv[1];
 			this->RTplan = true;
+			unsigned int count_iso = 0;
+			double IsocenterBase[10][3];
+			IsocenterSearch(this->RTplanFilename, count_iso, IsocenterBase);
+			Isocenter[0] = IsocenterBase[0][0];
+			Isocenter[1] = IsocenterBase[0][1];
+			Isocenter[2] = IsocenterBase[0][2];
 			argc--; argv++;
 		}
 
@@ -481,6 +488,10 @@ bool _3DRegistration::StartRegistration()
 
 	//FixedImageType::Pointer fixedImage = fixedImageReader->GetOutput();
 
+	//resampler->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
+	//resampler->SetOutputOrigin(fixedImage->GetOrigin());
+	//resampler->SetOutputSpacing(fixedImage->GetSpacing());
+	//resampler->SetOutputDirection(fixedImage->GetDirection());
 	resampler->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
 	resampler->SetOutputOrigin(fixedImage->GetOrigin());
 	resampler->SetOutputSpacing(fixedImage->GetSpacing());
@@ -597,6 +608,61 @@ bool _3DRegistration::Resample(FixedImageType::Pointer InputImage, FixedImageTyp
 		std::cerr << error << std::endl;
 		return EXIT_FAILURE;
 	}
+	return EXIT_SUCCESS;
+}
+
+bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer & OutputImage)
+{
+	itk::ImageRegion<3> FixedRegion = Image2Crop->GetLargestPossibleRegion();
+	itk::ImageRegion<3> MovingRegion = ReferenceImage->GetLargestPossibleRegion();
+	
+	FixedImageType::SizeType InputSize = FixedRegion.GetSize();
+	MovingImageType::SizeType OutputSize = MovingRegion.GetSize();
+
+	FixedImageType::SpacingType InputSpacing = Image2Crop->GetSpacing();
+	MovingImageType::SpacingType ReferenceSpacing = ReferenceImage->GetSpacing();
+
+	FixedImageType::SizeType LowerCrop{ 0 };
+	FixedImageType::SizeType UpperCrop{ 0 };
+
+	FixedImageType::PointType InputOrigin = Image2Crop->GetOrigin();
+	FixedImageType::PointType OutputOrigin = ReferenceImage->GetOrigin();
+	
+	//FixedRegion.Crop(MovingRegion);
+	for (int kk = 0; kk < 3; kk++)
+	{
+		LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+		UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + OutputSize[kk] / InputSpacing[kk])); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+	}
+
+	std::cout << "Output Size " << OutputSize << std::endl;
+	std::cout << "Input Size " << InputSize << std::endl;
+
+	std::cout << "Lower crop " << LowerCrop << std::endl;
+	std::cout << "Upper crop " << UpperCrop << std::endl;
+
+	CropFixedFilterType::Pointer CropFixedFilter = CropFixedFilterType::New();
+	CropFixedFilter->SetInput(Image2Crop);
+	CropFixedFilter->SetLowerBoundaryCropSize(LowerCrop);
+	CropFixedFilter->SetUpperBoundaryCropSize(UpperCrop);
+	//CropFixedFilter->SetExtractionRegion(FixedRegion); //valid only using extractimagefilter
+	CropFixedFilter->SetDirectionCollapseToIdentity();
+
+	try
+	{
+		if (verbose)
+			std::cout << "Cropping Fixed Image to Moving image size\n";
+		CropFixedFilter->Update();
+	}
+	catch(itk::ExceptionObject &err)
+	{
+		std::cerr << "Exception caught while cropping \n" 
+			<< err << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	OutputImage = CropFixedFilter->GetOutput();
+
 	return EXIT_SUCCESS;
 }
 
@@ -775,33 +841,145 @@ bool _3DRegistration::Initialize()
 				//movingImage = movingResampledImage;
 			}
 		}
-
-		WriterType::Pointer      writer_dbg = WriterType::New();
-		//CastFilterType::Pointer  caster =  CastFilterType::New();
-
-		writer_dbg->SetFileName("Debug Resampling.mha");
-
-		//caster->SetInput( resampler->GetOutput() );
-		writer_dbg->SetInput(fixedResampledImage);
-		//writer_dbg->SetInput(fixedResampleImage);
-		try
+		if (debug)
 		{
-			std::cout << "Writing CT Resampled\n";
-			timer.Start("WriteCTRes");
-			writer_dbg->Update();
-			timer.Stop("WriteCTRes");
-		}
-		catch (itk::ExceptionObject& error)
-		{
-			std::cerr << "ExceptionObject caught !" << std::endl;
-			std::cerr << error << std::endl;
-			return EXIT_FAILURE;
+			WriterType::Pointer      writer_dbg = WriterType::New();
+			//CastFilterType::Pointer  caster =  CastFilterType::New();
+
+			writer_dbg->SetFileName("Debug Resampling.mha");
+
+			//caster->SetInput( resampler->GetOutput() );
+			writer_dbg->SetInput(fixedResampledImage);
+			//writer_dbg->SetInput(fixedResampleImage);
+			try
+			{
+				std::cout << "Writing CT Resampled\n";
+				timer.Start("WriteCTRes");
+				writer_dbg->Update();
+				timer.Stop("WriteCTRes");
+			}
+			catch (itk::ExceptionObject& error)
+			{
+				std::cerr << "ExceptionObject caught !" << std::endl;
+				std::cerr << error << std::endl;
+				return EXIT_FAILURE;
+			}
 		}
 	}
 	else
 	{
 		fixedImage = fixedImageReader->GetOutput();
 		movingImage = movingImageReader->GetOutput();
+	}
+
+	// Gathering information about the images
+ 	const SpacingType fixedSpacing = fixedImage->GetSpacing();
+	const OriginType  fixedOrigin = fixedImage->GetOrigin();
+	const RegionType  fixedRegion = fixedImage->GetLargestPossibleRegion();
+	const SizeType    fixedSize = fixedRegion.GetSize();
+
+	const SpacingType movingSpacing = movingImage->GetSpacing();
+	const OriginType  movingOrigin = movingImage->GetOrigin();
+	const RegionType  movingRegion = movingImage->GetLargestPossibleRegion();
+	const SizeType    movingSize = movingRegion.GetSize();
+
+	if (verbose)
+		std::cout << "Create Initial transform\n";
+	
+	if (RTplan)
+	{
+		TransformType::InputPointType centerMoving;
+
+		centerMoving[0] = movingOrigin[0] + movingSpacing[0] * movingSize[0] / 2.0;
+		centerMoving[1] = movingOrigin[1] + movingSpacing[1] * movingSize[1] / 2.0;
+		centerMoving[2] = movingOrigin[2] + movingSpacing[2] * movingSize[2] / 2.0;
+
+		translation = centerMoving - Isocenter;
+		std::cout << "Translation to isocenter: " << translation << std::endl;
+		initialTransform->SetCenter(Isocenter);
+
+		initialTransform->SetTranslation(translation);
+
+		IsoAlignment->SetTransform(initialTransform);
+		IsoAlignment->SetInput(movingImage);
+		IsoAlignment->SetOutputSpacing(movingSpacing);
+		//IsoAlignment->SetOutputOrigin(fixedOrigin);
+		IsoAlignment->SetOutputOrigin(movingOrigin - translation);
+		IsoAlignment->SetSize(movingSize);
+
+		try
+		{
+			if (verbose)
+				std::cout << "Update Initializer\n";
+			IsoAlignment->Update();
+			if (verbose)
+				std::cout << "Done\n";
+		}
+		catch (itk::ExceptionObject& err)
+		{
+			std::cerr << "Exception caught on initializer" << std::endl;
+			std::cerr << err << std::endl;
+			return EXIT_FAILURE;
+		}
+		movingImage = IsoAlignment->GetOutput();
+		if (this->debug)
+		{
+			WriterType::Pointer      writer_dbg_iso = WriterType::New();
+			//CastFilterType::Pointer  caster =  CastFilterType::New();
+
+			writer_dbg_iso->SetFileName("Debug_isocenter_alignment.mha");
+
+			//caster->SetInput( resampler->GetOutput() );
+			writer_dbg_iso->SetInput(movingImage);
+			//writer_dbg->SetInput(fixedResampleImage);
+			try
+			{
+				std::cout << "Writing isocenter aligned CBCT\n";
+				timer.Start("WriteCBCTiso");
+				writer_dbg_iso->Update();
+				timer.Stop("WriteCBCTiso");
+			}
+			catch (itk::ExceptionObject& error)
+			{
+				std::cerr << "ExceptionObject caught !" << std::endl;
+				std::cerr << error << std::endl;
+				return EXIT_FAILURE;
+			}
+		}
+		if (this->RegistrationMetric == 0 || this->RegistrationMetric == 1)
+		{
+			FixedImageType::Pointer CroppedFixed;
+			if (this->Crop(fixedImage, movingImage, CroppedFixed))
+				return EXIT_FAILURE;
+			if (this->debug)
+			{
+				WriterType::Pointer writer_dbg_crop = WriterType::New();
+				//CastFilterType::Pointer  caster =  CastFilterType::New();
+
+				writer_dbg_crop->SetFileName("Debug_fixed_crop.mha");
+
+				//writer_dbg_crop->SetInput(fixedImage);
+				writer_dbg_crop->SetInput(CroppedFixed);
+				try
+				{
+					std::cout << "Writing cropped CT\n";
+					timer.Start("WriteCTcrop");
+					writer_dbg_crop->Update();
+					timer.Stop("WriteCTcrop");
+				}
+				catch (itk::ExceptionObject& error)
+				{
+					std::cerr << "ExceptionObject caught !" << std::endl;
+					std::cerr << error << std::endl;
+					return EXIT_FAILURE;
+				}
+			}
+			fixedImage = CroppedFixed;
+			if (debug)
+			{
+				fixedImage->Print(std::cout);
+			}
+		}
 	}
 
 	if (verbose)
@@ -813,42 +991,45 @@ bool _3DRegistration::Initialize()
 
 	registration->SetMetric(metric);
 	registration->SetOptimizer(optimizer);
-	
-	if (verbose)
-		std::cout << "Create Initial transform\n";
-	initialTransform->SetIdentity();
-	initializer->SetTransform(initialTransform);
-	initializer->SetFixedImage(fixedImage);
-	initializer->SetMovingImage(movingImage);
-	initializer->GeometryOn();
-	if (verbose)
-		std::cout << "Done\n";
-	try
-	{
-		if (verbose)
-			std::cout << "Update Initializer\n";
-		initializer->InitializeTransform();
-		if (verbose)
-			std::cout << "Done\n";
-	}
-	catch (itk::ExceptionObject& err)
-	{
-		std::cerr << "Exception caught on initializer" << std::endl;
-		std::cerr << err << std::endl;
-		return EXIT_FAILURE;
-	}
-	if (verbose)
-		std::cout << "Set Initial rotation \n";
-	//axis[0] = 0.0;
-	//axis[1] = 0.0;
-	//axis[2] = 1.0;
-	//const double angle = 0;
-	//rotation.Set(axis, angle);
-	
-	if (verbose)
-		std::cout << "Done \n";
 
-	registration->SetInitialTransform(initialTransform);
+	//else
+	//{
+	//	initialTransform->SetIdentity();
+
+	//	initializer->SetTransform(initialTransform);
+	//	initializer->SetFixedImage(fixedImage);
+	//	initializer->SetMovingImage(movingImage);
+	//	initializer->GeometryOn();
+
+	//	if (verbose)
+	//		std::cout << "Done\n";
+	//	try
+	//	{
+	//		if (verbose)
+	//			std::cout << "Update Initializer\n";
+	//		initializer->InitializeTransform();
+	//		if (verbose)
+	//			std::cout << "Done\n";
+	//	}
+	//	catch (itk::ExceptionObject& err)
+	//	{
+	//		std::cerr << "Exception caught on initializer" << std::endl;
+	//		std::cerr << err << std::endl;
+	//		return EXIT_FAILURE;
+	//	}
+	//	if (verbose)
+	//		std::cout << "Set Initial rotation \n";
+	//	//axis[0] = 0.0;
+	//	//axis[1] = 0.0;
+	//	//axis[2] = 1.0;
+	//	//const double angle = 0;
+	//	//rotation.Set(axis, angle);
+
+	//	if (verbose)
+	//		std::cout << "Done \n";
+
+	//	registration->SetInitialTransform(initialTransform);
+	//}
 	OptimizerScalesType optimizerScales(initialTransform->GetNumberOfParameters());
 
 	optimizerScales[0] = rotationScale;
