@@ -628,13 +628,32 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 	FixedImageType::PointType InputOrigin = Image2Crop->GetOrigin();
 	FixedImageType::PointType OutputOrigin = ReferenceImage->GetOrigin();
 	
-	//FixedRegion.Crop(MovingRegion);
-	for (int kk = 0; kk < 3; kk++)
-	{
-		LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-		UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + OutputSize[kk] / InputSpacing[kk])); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-	}
+	unsigned int padding_value[3] = { 10, 10, 5 };
 
+	//FixedRegion.Crop(MovingRegion);
+	if (FixedRegion.IsInside(MovingRegion))
+	{
+		for (int kk = 0; kk < 3; kk++)
+		{
+			LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+			UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + OutputSize[kk] / (InputSpacing[kk]/ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+			/* add some space around the cropped area to avoid losing info */
+			//if (LowerCrop[kk] <= 10)
+			//	LowerCrop[kk] = 0;
+			//else
+			//	LowerCrop[kk] -= padding_value[kk];
+
+			//if (UpperCrop[kk] <= 10)
+			//	UpperCrop[kk] = 0;
+			//else
+			//	UpperCrop[kk] -= padding_value[kk];
+		}
+	}
+	else
+	{
+		std::cerr << "Reference Image is not completely inside the Fixed one --> cropping is not supported\n";
+		return EXIT_FAILURE;
+	}
 	std::cout << "Output Size " << OutputSize << std::endl;
 	std::cout << "Input Size " << InputSize << std::endl;
 
