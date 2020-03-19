@@ -973,6 +973,26 @@ bool _3DRegistration::Initialize()
 					std::cerr << error << std::endl;
 					return EXIT_FAILURE;
 				}
+
+				FixedImageReaderType::Pointer reader_dbg_crop = FixedImageReaderType::New();
+				//CastFilterType::Pointer  caster =  CastFilterType::New();
+
+				reader_dbg_crop->SetFileName("Debug_fixed_crop.mha");
+								
+				try
+				{
+					std::cout << "Reading cropped CT\n";
+					timer.Start("ReadCTcrop");
+					reader_dbg_crop->Update();
+					timer.Stop("ReadCTcrop");
+				}
+				catch (itk::ExceptionObject& error)
+				{
+					std::cerr << "ExceptionObject caught while reading writtend cropped CT!" << std::endl;
+					std::cerr << error << std::endl;
+					return EXIT_FAILURE;
+				}
+				CroppedFixed = reader_dbg_crop->GetOutput();
 			}
 			fixedImage = CroppedFixed;
 			if (debug)
