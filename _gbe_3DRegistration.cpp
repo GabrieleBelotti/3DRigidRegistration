@@ -442,9 +442,7 @@ bool _3DRegistration::StartRegistration()
 	const double versorX = finalParameters[0];
 	const double versorY = finalParameters[1];
 	const double versorZ = finalParameters[2];
-	const double finalTranslationX = finalParameters[3];
-	const double finalTranslationY = finalParameters[4];
-	const double finalTranslationZ = finalParameters[5];
+	const double finalTranslation[3] = { finalParameters[3], finalParameters[4], finalParameters[5] };
 	const unsigned int numberOfIterations = optimizer->GetCurrentIteration();
 	const double bestValue = optimizer->GetValue();
 
@@ -464,9 +462,9 @@ bool _3DRegistration::StartRegistration()
 	std::cout << " angle around X   = " << versorX/dtr << std::endl;
 	std::cout << " angle around Y   = " << versorY/dtr << std::endl;
 	std::cout << " angle around Z   = " << versorZ/dtr << std::endl;
-	std::cout << " Translation X    = " << finalTranslationX << std::endl;
-	std::cout << " Translation Y    = " << finalTranslationY << std::endl;
-	std::cout << " Translation Z    = " << finalTranslationZ << std::endl;
+	std::cout << " Translation X    = " << finalTranslation[0] << std::endl;
+	std::cout << " Translation Y    = " << finalTranslation[1] << std::endl;
+	std::cout << " Translation Z    = " << finalTranslation[2] << std::endl;
 	std::cout << " Iterations       = " << numberOfIterations << std::endl;
 	std::cout << " Metric value     = " << bestValue << std::endl;
 	
@@ -492,8 +490,14 @@ bool _3DRegistration::StartRegistration()
 	//resampler->SetOutputOrigin(fixedImage->GetOrigin());
 	//resampler->SetOutputSpacing(fixedImage->GetSpacing());
 	//resampler->SetOutputDirection(fixedImage->GetDirection());
+
+	MovingImageType::PointType FinalOrigin = movingImage->GetOrigin();
+	FinalOrigin[0] = FinalOrigin[0] - finalTranslation[0];
+	FinalOrigin[1] = FinalOrigin[1] - finalTranslation[1];
+	FinalOrigin[2] = FinalOrigin[2] - finalTranslation[2];
+
 	resampler->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
-	resampler->SetOutputOrigin(fixedImage->GetOrigin());
+	resampler->SetOutputOrigin(FinalOrigin);
 	resampler->SetOutputSpacing(fixedImage->GetSpacing());
 	resampler->SetOutputDirection(fixedImage->GetDirection());
 	resampler->SetDefaultPixelValue( -1000 );
@@ -526,9 +530,9 @@ bool _3DRegistration::StartRegistration()
 	parametersFile << " versor X      = " << versorX << std::endl;
 	parametersFile << " versor Y      = " << versorY << std::endl;
 	parametersFile << " versor Z      = " << versorZ << std::endl;
-	parametersFile << " Translation X = " << finalTranslationX << std::endl;
-	parametersFile << " Translation Y = " << finalTranslationY << std::endl;
-	parametersFile << " Translation Z = " << finalTranslationZ << std::endl;
+	parametersFile << " Translation X = " << finalTranslation[0] << std::endl;
+	parametersFile << " Translation Y = " << finalTranslation[1] << std::endl;
+	parametersFile << " Translation Z = " << finalTranslation[2] << std::endl;
 	parametersFile << " Iterations    = " << numberOfIterations << std::endl;
 	parametersFile << " Metric value  = " << bestValue << std::endl;
 	parametersFile << "\nParameters :\n";
