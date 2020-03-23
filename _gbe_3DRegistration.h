@@ -26,6 +26,7 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkCropImageFilter.h"
+#include "itkRegionOfInterestImageFilter.h"
 
 #include "itkImageMaskSpatialObject.h"
 
@@ -177,12 +178,14 @@ private:
 
 	//typedef itk::ExtractImageFilter<FixedImageType, FixedImageType> CropFixedFilterType;
 	typedef itk::CropImageFilter<FixedImageType, FixedImageType> CropFixedFilterType;
+	typedef itk::RegionOfInterestImageFilter<FixedImageType, FixedImageType> ROIFilterType;
 
 	private:
 		//bool Initialize(FixedImageType::Pointer &fixedImage, MovingImageType::Pointer &movingImage);
 		//bool Resample(FixedImageType::Pointer InputImage, double shrinkfactor, FixedImageType::Pointer &OutputImage);
 		bool Resample(FixedImageType::Pointer InputImage, FixedImageType::SpacingType OutputSpacing, FixedImageType::Pointer &OutputImage);
 		bool Crop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer &OutputImage);
+		bool ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer & OutputImage);
 
 	public:
 		_3DRegistration(int argc, char * argv[]);
