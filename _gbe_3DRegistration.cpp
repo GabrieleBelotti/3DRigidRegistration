@@ -183,10 +183,11 @@ void exe_usage()
 	std::cerr << "       <-mm filename>						Moving Image Mask [default: no]\n";
 	std::cerr << "       <-mf filename>						Fixed Image Mask [default: no] - under construction\n";
 	std::cerr << "       <-par filename>					Output parameters filename [default: yes]\n";
+	std::cerr << "       <-rt path/filename					RTplan path and filename for Isocenter extraction\n";
 	//std::cerr << "       <-p>							Permute image convention order (coronal to axial first) [default: no]\n";
 	//std::cerr << "       <-iso double double double>    Align CBCT to isocenter [default: yes]\n";
 	//std::cerr << "       <-s>							Scale image intensity [default: no] - calibration work in progress \n";
-	//std::cerr << "       <-dbg>                   Debugging output [default: no]\n";
+	std::cerr << "       <-dbg>								Debugging output [default: yes]\n";
 
 	std::cerr << "       <-o filename>						Output image filename\n\n";
 	std::cerr << "											by  Gabriele Belotti\n";
@@ -625,8 +626,11 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 
 	FixedImageType::SizeType OutputSize;
 
+
 	FixedImageType::SpacingType InputSpacing = Image2Crop->GetSpacing();
 	MovingImageType::SpacingType ReferenceSpacing = ReferenceImage->GetSpacing();
+
+	MovingImageType::SizeType OutputSize;
 
 	FixedImageType::SizeType LowerCrop{ 0 };
 	FixedImageType::SizeType UpperCrop{ 0 };
@@ -636,15 +640,16 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 	
 	unsigned int padding_value[3] = { 10, 10, 5 };
 
-	//FixedRegion.Crop(MovingRegion);
 	if (FixedRegion.IsInside(MovingRegion))
 	{
 		for (int kk = 0; kk < 3; kk++)
 		{
+
 			//OutputSize[kk] = ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]);
 			LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
 			UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk]/ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
 			OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
+
 			/* add some space around the cropped area to avoid losing info */
 			//if (LowerCrop[kk] <= 10)
 			//	LowerCrop[kk] = 0;
@@ -657,11 +662,13 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 			//	UpperCrop[kk] -= padding_value[kk];
 		}
 	}
+
 	else
 	{
 		std::cerr << "Reference Image is not completely inside the Fixed one --> cropping is not supported\n";
 		return EXIT_FAILURE;
 	}
+
 	std::cout << "Reference Size " << ReferenceSize << std::endl;
 	std::cout << "Input Size " << InputSize << std::endl;
 	std::cout << "Output Size " << OutputSize << std::endl;
@@ -670,10 +677,11 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 	std::cout << "Upper crop " << UpperCrop << std::endl;
 
 	CropFixedFilterType::Pointer CropFixedFilter = CropFixedFilterType::New();
+
 	CropFixedFilter->SetInput(Image2Crop);
 	CropFixedFilter->SetLowerBoundaryCropSize(LowerCrop);
 	CropFixedFilter->SetUpperBoundaryCropSize(UpperCrop);
-	//CropFixedFilter->SetExtractionRegion(FixedRegion); //valid only using extractimagefilter
+	CropFixedFilter->SetExtractionRegion(FixedRegion); //valid only using extractimagefilter
 	CropFixedFilter->SetDirectionCollapseToIdentity();
 
 	try
@@ -727,6 +735,7 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 			LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
 			UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
 			OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
+
 			/* add some space around the cropped area to avoid losing info */
 			//if (LowerCrop[kk] <= 10)
 			//	LowerCrop[kk] = 0;
@@ -779,6 +788,7 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 
 	OutputRegion.SetIndex(StartIndex);
 	OutputRegion.SetSize(OutputSize);
+
 	//FixedRegion.Crop(OutputRegion);
 
 	ROIFilter->SetRegionOfInterest(OutputRegion);
@@ -1089,6 +1099,12 @@ bool _3DRegistration::Initialize()
 			//if (this->Crop(fixedImage, movingImage, CroppedFixed))
 			if (this->ROICrop(fixedImage, movingImage, CroppedFixed))
 				return EXIT_FAILURE;
+			if (debug)
+			{
+				//CroppedFixed->SetOrigin(CroppedFixed->GetOrigin());
+				//CroppedFixed->DisconnectPipeline();
+				CroppedFixed->Print(std::cout);
+			}
 			if (this->debug)
 			{
 				WriterType::Pointer writer_dbg_crop = WriterType::New();
