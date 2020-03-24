@@ -26,6 +26,7 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkCropImageFilter.h"
+#include "itkRegionOfInterestImageFilter.h"
 
 #include "itkImageMaskSpatialObject.h"
 
@@ -177,6 +178,7 @@ private:
 
 	//typedef itk::ExtractImageFilter<FixedImageType, FixedImageType> CropFixedFilterType;
 	typedef itk::CropImageFilter<FixedImageType, FixedImageType> CropFixedFilterType;
+	typedef itk::RegionOfInterestImageFilter<FixedImageType, FixedImageType> ROIFilterType;
 
 	private:
 		//bool Initialize(FixedImageType::Pointer &fixedImage, MovingImageType::Pointer &movingImage);

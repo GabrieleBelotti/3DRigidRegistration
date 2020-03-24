@@ -621,7 +621,9 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 	itk::ImageRegion<3> MovingRegion = ReferenceImage->GetLargestPossibleRegion();
 	
 	FixedImageType::SizeType InputSize = FixedRegion.GetSize();
-	MovingImageType::SizeType OutputSize = MovingRegion.GetSize();
+	MovingImageType::SizeType ReferenceSize = MovingRegion.GetSize();
+
+	FixedImageType::SizeType OutputSize;
 
 	FixedImageType::SpacingType InputSpacing = Image2Crop->GetSpacing();
 	MovingImageType::SpacingType ReferenceSpacing = ReferenceImage->GetSpacing();
@@ -639,8 +641,10 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 	{
 		for (int kk = 0; kk < 3; kk++)
 		{
+			//OutputSize[kk] = ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]);
 			LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-			UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + OutputSize[kk] / (InputSpacing[kk]/ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+			UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk]/ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+			OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
 			/* add some space around the cropped area to avoid losing info */
 			//if (LowerCrop[kk] <= 10)
 			//	LowerCrop[kk] = 0;
@@ -658,8 +662,9 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 		std::cerr << "Reference Image is not completely inside the Fixed one --> cropping is not supported\n";
 		return EXIT_FAILURE;
 	}
-	std::cout << "Output Size " << OutputSize << std::endl;
+	std::cout << "Reference Size " << ReferenceSize << std::endl;
 	std::cout << "Input Size " << InputSize << std::endl;
+	std::cout << "Output Size " << OutputSize << std::endl;
 
 	std::cout << "Lower crop " << LowerCrop << std::endl;
 	std::cout << "Upper crop " << UpperCrop << std::endl;
@@ -718,9 +723,10 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 		for (int kk = 0; kk < 3; kk++)
 		{
 			StartIndex[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk];
-			OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
+			//OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
 			LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-			UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + OutputSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+			UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+			OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
 			/* add some space around the cropped area to avoid losing info */
 			//if (LowerCrop[kk] <= 10)
 			//	LowerCrop[kk] = 0;
@@ -740,8 +746,11 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 		return EXIT_FAILURE;
 	}
 
-	std::cout << "Output Size " << OutputSize << std::endl;
 	std::cout << "Input Size " << InputSize << std::endl;
+	std::cout << "Reference Size " << ReferenceSize << std::endl;
+	std::cout << "Output Size " << OutputSize << std::endl;
+
+	std::cout << "Start Index " << StartIndex << std::endl;
 
 	std::cout << "Lower crop " << LowerCrop << std::endl;
 	std::cout << "Upper crop " << UpperCrop << std::endl;
@@ -770,10 +779,9 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 
 	OutputRegion.SetIndex(StartIndex);
 	OutputRegion.SetSize(OutputSize);
-	FixedRegion.Crop(OutputRegion);
+	//FixedRegion.Crop(OutputRegion);
 
-
-	ROIFilter->SetRegionOfInterest(FixedRegion);
+	ROIFilter->SetRegionOfInterest(OutputRegion);
 	ROIFilter->SetInput(Image2Crop);
 
 	try
@@ -1078,7 +1086,8 @@ bool _3DRegistration::Initialize()
 		if (this->RegistrationMetric == 0 || this->RegistrationMetric == 1)
 		{
 			FixedImageType::Pointer CroppedFixed;
-			if (this->Crop(fixedImage, movingImage, CroppedFixed))
+			//if (this->Crop(fixedImage, movingImage, CroppedFixed))
+			if (this->ROICrop(fixedImage, movingImage, CroppedFixed))
 				return EXIT_FAILURE;
 			if (this->debug)
 			{
