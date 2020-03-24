@@ -25,8 +25,6 @@
 #include "itkSubtractImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkExtractImageFilter.h"
-#include "itkCropImageFilter.h"
-#include "itkRegionOfInterestImageFilter.h"
 
 #include "itkImageMaskSpatialObject.h"
 
@@ -49,12 +47,6 @@ public:
 	typedef itk::Euler3DTransform< double> TransformType;
 	FixedImageType::Pointer fixedImage;
 	MovingImageType::Pointer movingImage;
-
-	typedef FixedImageType::SpacingType    SpacingType;
-	typedef FixedImageType::PointType      OriginType;
-	typedef FixedImageType::RegionType     RegionType;
-	typedef FixedImageType::SizeType       SizeType;
-	TransformType::TranslationType translation;
 
 	typedef itk::ObjectToObjectOptimizerBaseTemplate<double> OptimizerBaseType;
 	//typedef itk::LBFGSOptimizerv4 LBFGSOptimizerType;
@@ -94,23 +86,12 @@ private:
 	bool shrinking = false;
 	bool RTplan = false;
 
-	/* enumerators */
-	enum MetricSelection
-	{
-		MMI,
-		MSE,
-	};
-
-	MetricSelection RegistrationMetric = MMI;
-
 	/* operators */
 	const double dtr = (atan(1.0) * 4.0) / 180.0;
 
 	double cx = 0;
 	double cy = -234;
 	double cz = 70;
-
-	TransformType::InputPointType Isocenter;
 
 	/* Registration parameters */
 	const unsigned int numberOfLevels = 1;
@@ -174,19 +155,10 @@ private:
 		MovingImageType,
 		FixedImageType >    ResampleFilterType;
 
-	ResampleFilterType::Pointer IsoAlignment = ResampleFilterType::New();
-
-	//typedef itk::ExtractImageFilter<FixedImageType, FixedImageType> CropFixedFilterType;
-	typedef itk::CropImageFilter<FixedImageType, FixedImageType> CropFixedFilterType;
-	typedef itk::RegionOfInterestImageFilter<FixedImageType, FixedImageType> ROIFilterType;
-
 	private:
 		//bool Initialize(FixedImageType::Pointer &fixedImage, MovingImageType::Pointer &movingImage);
 		//bool Resample(FixedImageType::Pointer InputImage, double shrinkfactor, FixedImageType::Pointer &OutputImage);
 		bool Resample(FixedImageType::Pointer InputImage, FixedImageType::SpacingType OutputSpacing, FixedImageType::Pointer &OutputImage);
-		bool Crop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer &OutputImage);
-		bool ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer & OutputImage);
-
 	public:
 		_3DRegistration(int argc, char * argv[]);
 		//RegistrationClass();
