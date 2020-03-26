@@ -56,6 +56,19 @@ public:
 	typedef FixedImageType::SizeType       SizeType;
 	TransformType::TranslationType translation;
 
+	/*Output Dimensions*/
+	SpacingType FinalMovingSpacing;
+	OriginType FinalMovingOrigin;
+	SizeType FinalMovingSize;
+
+	SpacingType OriginalMovingSpacing;
+	OriginType OriginalMovingOrigin;
+	SizeType OriginalMovingSize;
+
+	SpacingType OriginalFixedSpacing;
+	OriginType OriginalFixedOrigin;
+	SizeType OriginalFixedSize;
+
 	typedef itk::ObjectToObjectOptimizerBaseTemplate<double> OptimizerBaseType;
 	//typedef itk::LBFGSOptimizerv4 LBFGSOptimizerType;
 	typedef itk::LBFGSOptimizerv4 OptimizerType;
@@ -93,6 +106,7 @@ private:
 	bool resolution = false;
 	bool shrinking = false;
 	bool RTplan = false;
+	bool like = false;
 
 	/* enumerators */
 	enum MetricSelection

@@ -178,7 +178,8 @@ void exe_usage()
 	//std::cerr << "       <-A>                     Use GPU hardware (to be implemented) [default: cpu]\n";
 	std::cerr << "       <-h>								Display (this) usage information\n";
 	std::cerr << "       <-v>								Verbose output [default: no]\n";
-	std::cerr << "       <-resample <double>>				Downsample by a factor <double>\n";
+	//std::cerr << "       <-resample <double>>				Downsample by a factor <double>\n";
+	std::cerr << "       <--like>  						Match CBCT to CT dimensions\n";
 	std::cerr << "       <-res <double, double, double>>	Resample to <double, double, double>\n";
 	std::cerr << "       <-mm filename>						Moving Image Mask [default: no]\n";
 	std::cerr << "       <-mf filename>						Fixed Image Mask [default: no] - under construction\n";
@@ -249,6 +250,14 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			this->verbose = true;
 			continue;
 			std::cout << "Verbose execution selected\n";
+		}
+
+		if ((ok == false) && (strcmp(argv[1], "--like") == 0))
+		{
+			argc--; argv++;
+			ok = true;
+			this->like = true;
+			std::cout << "Selected fixed dimensions for output\n";
 		}
 
 		if ((this->ok == false) && (strcmp(argv[1], "-dbg") == 0))
@@ -491,16 +500,29 @@ bool _3DRegistration::StartRegistration()
 	//resampler->SetOutputSpacing(fixedImage->GetSpacing());
 	//resampler->SetOutputDirection(fixedImage->GetDirection());
 
-	MovingImageType::PointType FinalOrigin = movingImage->GetOrigin();
-	FinalOrigin[0] = FinalOrigin[0] - finalTranslation[0];
-	FinalOrigin[1] = FinalOrigin[1] - finalTranslation[1];
-	FinalOrigin[2] = FinalOrigin[2] - finalTranslation[2];
+	/*MovingImageType::PointType*/ FinalMovingOrigin = movingImage->GetOrigin();
+	FinalMovingOrigin[0] = FinalMovingOrigin[0] - finalTranslation[0];
+	FinalMovingOrigin[1] = FinalMovingOrigin[1] - finalTranslation[1];
+	FinalMovingOrigin[2] = FinalMovingOrigin[2] - finalTranslation[2];
 
-	resampler->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
-	resampler->SetOutputOrigin(FinalOrigin);
-	resampler->SetOutputSpacing(fixedImage->GetSpacing());
+	if (this->like)
+	{
+		//AGGIUNGI OFFSET PER RIPORTARE L'ORIGINE AL POSTO GIUSTO: TIPO ORIGINALFIXEDORIGIN - FINALMOVINGORIGIN
+		this->FinalMovingSpacing = this->OriginalFixedSpacing;
+		this->FinalMovingSize = this->OriginalFixedSize;
+		resampler->SetInput(movingImageReader->GetOutput());
+	}
+	else
+	{
+		this->FinalMovingSpacing = fixedImage->GetSpacing();
+		this->FinalMovingSize = fixedImage->GetLargestPossibleRegion().GetSize();
+	}
+	resampler->SetOutputOrigin(FinalMovingOrigin);
+	resampler->SetDefaultPixelValue(-1000);
+	resampler->SetSize(this->FinalMovingSize);
+	resampler->SetOutputSpacing(this->FinalMovingSpacing);
 	resampler->SetOutputDirection(fixedImage->GetDirection());
-	resampler->SetDefaultPixelValue( -1000 );
+
 
 	WriterType::Pointer      writer = WriterType::New();
 	//CastFilterType::Pointer  caster =  CastFilterType::New();
@@ -511,7 +533,7 @@ bool _3DRegistration::StartRegistration()
 	writer->SetInput(resampler->GetOutput());
 	try
 	{
-		std::cout << "Writing transformed CBCT\n";
+		std::cout << "Writing registered Moving Image\n";
 		timer.Start("WriteCBCT");
 		writer->Update();
 		timer.Stop("WriteCBCT");
@@ -617,8 +639,8 @@ bool _3DRegistration::Resample(FixedImageType::Pointer InputImage, FixedImageTyp
 
 bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer & OutputImage)
 {
-	itk::ImageRegion<3> FixedRegion = Image2Crop->GetLargestPossibleRegion();
-	itk::ImageRegion<3> MovingRegion = ReferenceImage->GetLargestPossibleRegion();
+	itk::ImageRegion<this->Dimension> FixedRegion = Image2Crop->GetLargestPossibleRegion();
+	itk::ImageRegion<this->Dimension> MovingRegion = ReferenceImage->GetLargestPossibleRegion();
 	
 	FixedImageType::SizeType InputSize = FixedRegion.GetSize();
 	MovingImageType::SizeType ReferenceSize = MovingRegion.GetSize();
@@ -634,12 +656,12 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 	FixedImageType::PointType InputOrigin = Image2Crop->GetOrigin();
 	FixedImageType::PointType OutputOrigin = ReferenceImage->GetOrigin();
 	
-	unsigned int padding_value[3] = { 10, 10, 5 };
+	unsigned int padding_value[this->Dimension] = { 10, 10, 5 };
 
 	//FixedRegion.Crop(MovingRegion);
 	if (FixedRegion.IsInside(MovingRegion))
 	{
-		for (int kk = 0; kk < 3; kk++)
+		for (int kk = 0; kk < this->Dimension; kk++)
 		{
 			//OutputSize[kk] = ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]);
 			LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
@@ -696,9 +718,9 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 
 bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer & OutputImage)
 {
-	itk::ImageRegion<3> FixedRegion = Image2Crop->GetLargestPossibleRegion();
-	itk::ImageRegion<3> MovingRegion = ReferenceImage->GetLargestPossibleRegion();
-	itk::ImageRegion<3> OutputRegion;
+	itk::ImageRegion<this->Dimension> FixedRegion = Image2Crop->GetLargestPossibleRegion();
+	itk::ImageRegion<this->Dimension> MovingRegion = ReferenceImage->GetLargestPossibleRegion();
+	itk::ImageRegion<this->Dimension> OutputRegion;
 
 	FixedImageType::SizeType InputSize = FixedRegion.GetSize();
 	MovingImageType::SizeType ReferenceSize = MovingRegion.GetSize();
@@ -716,11 +738,11 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 	FixedImageType::PointType InputOrigin = Image2Crop->GetOrigin();
 	FixedImageType::PointType OutputOrigin = ReferenceImage->GetOrigin();
 
-	unsigned int padding_value[3] = { 10, 10, 5 };
+	unsigned int padding_value[this->Dimension] = { 10, 10, 5 };
 
 	if (FixedRegion.IsInside(MovingRegion))
 	{
-		for (int kk = 0; kk < 3; kk++)
+		for (int kk = 0; kk < this->Dimension; kk++)
 		{
 			StartIndex[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk];
 			//OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
@@ -843,6 +865,15 @@ bool _3DRegistration::Initialize()
 		return EXIT_FAILURE;
 	}
 	/*End of reading CT and CBCT images*/
+
+	this->OriginalMovingSpacing = movingImageReader->GetOutput()->GetSpacing();
+	this->OriginalMovingOrigin = movingImageReader->GetOutput()->GetOrigin();
+	this->OriginalMovingSize = movingImageReader->GetOutput()->GetLargestPossibleRegion().GetSize();
+
+	this->OriginalFixedSpacing = fixedImageReader->GetOutput()->GetSpacing();
+	this->OriginalFixedOrigin = fixedImageReader->GetOutput()->GetOrigin();
+	this->OriginalFixedSize = fixedImageReader->GetOutput()->GetLargestPossibleRegion().GetSize();
+
 
 	/*Reading masks if requested/available*/
 	if (fixed_mask)
