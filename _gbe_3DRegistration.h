@@ -30,8 +30,16 @@
 
 #include "itkImageMaskSpatialObject.h"
 
-#include "DicomImageReadPrintTags.cxx"
-
+//#include "DicomImageReadPrintTags.h"
+#include "gdcmReader.h"
+#include "gdcmGlobal.h"
+#include "gdcmDicts.h"
+#include "gdcmDict.h"
+#include "gdcmAttribute.h"
+#include "gdcmStringFilter.h"
+#include "gdcmItem.h"
+#include "gdcmSequenceOfItems.h"
+/***************************/
 
 class _3DRegistration
 {
@@ -197,6 +205,7 @@ private:
 	private:
 		//bool Initialize(FixedImageType::Pointer &fixedImage, MovingImageType::Pointer &movingImage);
 		//bool Resample(FixedImageType::Pointer InputImage, double shrinkfactor, FixedImageType::Pointer &OutputImage);
+		bool IsocenterSearch(char *argv, unsigned int &count, double Isocenter[][3]);
 		bool Resample(FixedImageType::Pointer InputImage, FixedImageType::SpacingType OutputSpacing, FixedImageType::Pointer &OutputImage);
 		bool Crop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer &OutputImage);
 		bool ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer & OutputImage);

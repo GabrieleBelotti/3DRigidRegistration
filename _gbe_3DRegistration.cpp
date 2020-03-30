@@ -226,13 +226,20 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			std::cout << "RTplan reading\n";
 			ok = true;
 			this->RTplanFilename = argv[1];
-			this->RTplan = true;
 			unsigned int count_iso = 0;
 			double IsocenterBase[10][3];
-			IsocenterSearch(this->RTplanFilename, count_iso, IsocenterBase);
-			Isocenter[0] = IsocenterBase[0][0];
-			Isocenter[1] = IsocenterBase[0][1];
-			Isocenter[2] = IsocenterBase[0][2];
+			if (this->IsocenterSearch(this->RTplanFilename, count_iso, IsocenterBase))
+			{
+				this->RTplan = false;
+				std::cerr << "FAILED\n";
+			}
+			else
+			{
+				this->RTplan = true;
+				Isocenter[0] = IsocenterBase[0][0];
+				Isocenter[1] = IsocenterBase[0][1];
+				Isocenter[2] = IsocenterBase[0][2];
+			}
 			argc--; argv++;
 		}
 
@@ -1263,5 +1270,65 @@ bool _3DRegistration::SetLevels()
 	registration->SetNumberOfLevels(this->numberOfLevels);
 	registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
 	registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
+	return EXIT_SUCCESS;
+}
+
+bool _3DRegistration::IsocenterSearch(char *argv, unsigned int &count, double Isocenter[][3])
+{
+	const char *filename = argv;
+
+	const gdcm::Global &g = gdcm::Global::GetInstance();
+	const gdcm::Dicts &dicts = g.GetDicts();
+	const gdcm::Dict &pubdict = dicts.GetPublicDict();
+
+	gdcm::Reader reader;
+	reader.SetFileName(filename);
+	if (!reader.Read())
+	{
+		std::cerr << "Could not read: " << filename << std::endl;
+	}
+	const char * tag = "Isocenter Position";
+	gdcm::File &file = reader.GetFile();
+	gdcm::DataSet &ds = file.GetDataSet();
+	gdcm::Tag tTag;
+	pubdict.GetDictEntryByName(tag, tTag);
+	//const uint16_t Element = tTag.GetElement();
+	const uint16_t Group = 0x300a;
+	const uint16_t Element = 0x012c;
+	gdcm::Attribute<Group, Element> IsocenterPosition;
+
+	gdcm::Tag tIonBeamSequence(0x300a, 0x03a2);
+	const gdcm::DataElement &NestedAttributesSequence_1 = ds.GetDataElement(tIonBeamSequence);
+
+	pubdict.GetDictEntryByName("Ion Beam Sequence", tIonBeamSequence);
+	std::cout << "Found: " << tIonBeamSequence << std::endl;
+	std::cout << "Did we find its position? " << ds.FindDataElement(tIonBeamSequence) << std::endl;
+	if (!ds.FindDataElement(tIonBeamSequence))
+		return EXIT_FAILURE;
+	gdcm::SequenceOfItems *sqi_1 = NestedAttributesSequence_1.GetValueAsSQ();
+	const unsigned int &nItems_1 = sqi_1->GetNumberOfItems();
+	const gdcm::Tag tIonControlPointSequence(0x300a, 0x03a8);
+	for (unsigned int i = 1; i < nItems_1 + 1; i++)
+	{
+		const gdcm::Item &it_1 = sqi_1->GetItem(i);
+		const gdcm::DataSet &ds_2 = it_1.GetNestedDataSet();
+		if (ds_2.FindDataElement(tIonControlPointSequence))
+		{
+			const gdcm::DataElement&  NestedAttributesSequence_2 = ds_2.GetDataElement(tIonControlPointSequence);
+			gdcm::SequenceOfItems *sqi_2 = NestedAttributesSequence_2.GetValueAsSQ();
+			//sqi_2->Print(std::cout);
+			//std::cout << "\nNumber of items, second layer: " << sqi_2->GetNumberOfItems() << std::endl;
+			const gdcm::Item &it_2 = sqi_2->GetItem(1);
+			gdcm::Tag tIsocenter(Group, Element);
+			const gdcm::DataElement de_Isocenter = it_2.GetDataElement(tIsocenter);
+			IsocenterPosition.SetFromDataElement(de_Isocenter);
+			Isocenter[count][0] = IsocenterPosition.GetValues()[0];
+			Isocenter[count][1] = IsocenterPosition.GetValues()[1];
+			Isocenter[count][2] = IsocenterPosition.GetValues()[2];
+			std::cout << "Isocenter: " << Isocenter[count][0] << " " << Isocenter[count][1] << " " << Isocenter[count][2] << std::endl;
+			count++;
+		}
+	}
+	std::cout << "Number of Isocenters found : " << count << std::endl;
 	return EXIT_SUCCESS;
 }
