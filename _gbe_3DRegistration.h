@@ -41,6 +41,21 @@
 #include "gdcmSequenceOfItems.h"
 /***************************/
 
+#define Reg33GetMacro(name, type)                                       \
+  virtual type Get##name ()                                         \
+    {                                                                 \
+    return this->##name;                                          \
+    }
+
+#define Reg33SetMacro(name, type)                     \
+  virtual void Set##name (const type _arg)          \
+    {                                               \
+    if ( this->##name != _arg )                   \
+      {                                             \
+      this->##name = _arg;                        \
+      }                                             \
+    }
+
 class _3DRegistration
 {
 private:
@@ -220,6 +235,31 @@ private:
 
 		bool StartRegistration();
 		bool SetLevels();
+
+		/*Set/Get Methods*/
+		Reg33GetMacro(verbose, bool);
+		Reg33SetMacro(verbose, bool);
+		Reg33GetMacro(debug, bool);
+		Reg33SetMacro(debug, bool);
+		Reg33GetMacro(moving_mask, bool);
+		Reg33SetMacro(moving_mask, bool);
+		Reg33GetMacro(fixed_mask, bool);
+		Reg33SetMacro(fixed_mask, bool);
+		Reg33GetMacro(RTplan, bool);
+		Reg33SetMacro(RTplan, bool);
+		Reg33GetMacro(resample, bool);
+		Reg33SetMacro(resample, bool);
+		Reg33GetMacro(resolution, bool);
+		Reg33SetMacro(resolution, bool);
+
+		itkBooleanMacro(verbose);
+		itkBooleanMacro(debug);
+		itkBooleanMacro(moving_mask);
+		itkBooleanMacro(fixed_mask);
+		itkBooleanMacro(RTplan);
+		itkBooleanMacro(resample);
+		itkBooleanMacro(resolution);
+		//itkBooleanMacro(verbose);
 
 
 };
