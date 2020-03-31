@@ -196,8 +196,13 @@ void exe_usage()
 	exit(EXIT_FAILURE);
 }
 
+_3DRegistration::_3DRegistration()
+{
+}
+
 _3DRegistration::_3DRegistration(int argc, char *argv[])
 {
+	std::cout << "Parsing arguments\n";
 	if (argc <= 3)
 	{
 		std::cout << "Not enough input arguments\n";
@@ -355,14 +360,14 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 				argc--;
 				argv++;
 			}
-			else if (this->fixedImagefilename == NULL)
+			else if (this->fixedImagefilename.empty())
 			{
 				this->fixedImagefilename = argv[1];
 				argc--;
 				argv++;
 			}
 
-			else if (this->movingImagefilename == NULL)
+			else if (this->movingImagefilename.empty())
 			{
 				this->movingImagefilename = argv[1];
 				argc--;
@@ -1273,9 +1278,9 @@ bool _3DRegistration::SetLevels()
 	return EXIT_SUCCESS;
 }
 
-bool _3DRegistration::IsocenterSearch(char *argv, unsigned int &count, double Isocenter[][3])
+bool _3DRegistration::IsocenterSearch(std::string argv, unsigned int &count, double Isocenter[][3])
 {
-	const char *filename = argv;
+	const char *filename = argv.c_str();
 
 	const gdcm::Global &g = gdcm::Global::GetInstance();
 	const gdcm::Dicts &dicts = g.GetDicts();

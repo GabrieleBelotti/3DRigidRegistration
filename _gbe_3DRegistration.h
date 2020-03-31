@@ -56,6 +56,15 @@
       }                                             \
     }
 
+#define Reg33SetCharMacro(name, type)                     \
+  virtual void Set##name (type _arg)          \
+    {                                               \
+    if ( this->##name != _arg )                   \
+      {                                             \
+      this->##name = _arg;                        \
+      }                                             \
+    }
+
 class _3DRegistration
 {
 private:
@@ -91,6 +100,14 @@ public:
 	SpacingType OriginalFixedSpacing;
 	OriginType OriginalFixedOrigin;
 	SizeType OriginalFixedSize;
+
+	/*Enum types*/
+	enum MetricSelection
+	{
+		MMI,
+		MSE,
+	};
+
 
 	typedef itk::ObjectToObjectOptimizerBaseTemplate<double> OptimizerBaseType;
 	//typedef itk::LBFGSOptimizerv4 LBFGSOptimizerType;
@@ -132,12 +149,6 @@ private:
 	bool like = false;
 
 	/* enumerators */
-	enum MetricSelection
-	{
-		MMI,
-		MSE,
-	};
-
 	MetricSelection RegistrationMetric = MMI;
 
 	/* operators */
@@ -159,12 +170,19 @@ private:
 	std::string OutputTransformfilename = "3DRigidRegistrationTransform.txt";
 	//std::string Iterationfilename = "3DRigidRegistrationIt.txt";
 
-	char* fixedImagefilename = NULL;
-	char* movingImagefilename = NULL;
-	char* movingMaskfilename = NULL;
-	char* fixedMaskfilename = NULL;
-	char* Orientation = "RAI";
-	char* RTplanFilename = NULL;
+	//char* fixedImagefilename = NULL;
+	//char* movingImagefilename = NULL;
+	//char* movingMaskfilename = NULL;
+	//char* fixedMaskfilename = NULL;
+	//char* Orientation = "RAI";
+	//char* RTplanFilename = NULL;
+
+	std::string fixedImagefilename = NULL;
+	std::string movingImagefilename = NULL;
+	std::string movingMaskfilename = NULL;
+	std::string fixedMaskfilename = NULL;
+	std::string Orientation = "RAI";
+	std::string RTplanFilename = NULL;
 
 	/* Types */
 
@@ -220,14 +238,14 @@ private:
 	private:
 		//bool Initialize(FixedImageType::Pointer &fixedImage, MovingImageType::Pointer &movingImage);
 		//bool Resample(FixedImageType::Pointer InputImage, double shrinkfactor, FixedImageType::Pointer &OutputImage);
-		bool IsocenterSearch(char *argv, unsigned int &count, double Isocenter[][3]);
+		bool IsocenterSearch(std::string argv, unsigned int &count, double Isocenter[][3]);
 		bool Resample(FixedImageType::Pointer InputImage, FixedImageType::SpacingType OutputSpacing, FixedImageType::Pointer &OutputImage);
 		bool Crop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer &OutputImage);
 		bool ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer & OutputImage);
 
 	public:
+		_3DRegistration();
 		_3DRegistration(int argc, char * argv[]);
-		//RegistrationClass();
 		virtual ~_3DRegistration();
 		
 		template<typename TMetricType>
@@ -252,6 +270,29 @@ private:
 		Reg33GetMacro(resolution, bool);
 		Reg33SetMacro(resolution, bool);
 
+		Reg33GetMacro(RegistrationMetric, MetricSelection);
+		Reg33SetMacro(RegistrationMetric, MetricSelection);
+
+		Reg33GetMacro(fixedImagefilename, std::string);
+		Reg33SetMacro(fixedImagefilename, std::string);
+		Reg33GetMacro(movingImagefilename, std::string);
+		Reg33SetMacro(movingImagefilename, std::string);
+		Reg33GetMacro(fixedMaskfilename, std::string);
+		Reg33SetMacro(fixedMaskfilename, std::string);
+		Reg33GetMacro(movingMaskfilename, std::string);
+		Reg33SetMacro(movingMaskfilename, std::string);
+		Reg33GetMacro(RTplanFilename, std::string);
+		Reg33SetMacro(RTplanFilename, std::string);		
+		Reg33GetMacro(Outputfilename, std::string);
+		Reg33SetMacro(Outputfilename, std::string);
+
+		/*char* fixedImagefilename = NULL;
+		char* movingImagefilename = NULL;
+		char* movingMaskfilename = NULL;
+		char* fixedMaskfilename = NULL;
+		char* Orientation = "RAI";
+		char* RTplanFilename = NULL;
+*/
 		itkBooleanMacro(verbose);
 		itkBooleanMacro(debug);
 		itkBooleanMacro(moving_mask);
