@@ -177,12 +177,12 @@ private:
 	//char* Orientation = "RAI";
 	//char* RTplanFilename = NULL;
 
-	std::string fixedImagefilename = NULL;
-	std::string movingImagefilename = NULL;
-	std::string movingMaskfilename = NULL;
-	std::string fixedMaskfilename = NULL;
+	std::string fixedImagefilename = std::string();
+	std::string movingImagefilename = std::string();
+	std::string movingMaskfilename = std::string();
+	std::string fixedMaskfilename = std::string();
 	std::string Orientation = "RAI";
-	std::string RTplanFilename = NULL;
+	std::string RTplanFilename = std::string();
 
 	/* Types */
 
