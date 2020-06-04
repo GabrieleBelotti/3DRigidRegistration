@@ -27,6 +27,7 @@
 #include "itkExtractImageFilter.h"
 #include "itkCropImageFilter.h"
 #include "itkRegionOfInterestImageFilter.h"
+#include "itkSpatialOrientationAdapter.h"
 
 #include "itkImageMaskSpatialObject.h"
 
@@ -147,6 +148,7 @@ private:
 	bool shrinking = false;
 	bool RTplan = false;
 	bool like = false;
+	bool autocrop = false; //enhances speed (is overriden by RTPlan)
 
 	/* enumerators */
 	MetricSelection RegistrationMetric = MMI;
@@ -253,6 +255,7 @@ private:
 
 		bool StartRegistration();
 		bool SetLevels();
+		bool ReadIsocenter();
 
 		/*Set/Get Methods*/
 		Reg33GetMacro(verbose, bool);
@@ -269,6 +272,8 @@ private:
 		Reg33SetMacro(resample, bool);
 		Reg33GetMacro(resolution, bool);
 		Reg33SetMacro(resolution, bool);
+		Reg33GetMacro(autocrop, bool);
+		Reg33SetMacro(autocrop, bool);
 
 		Reg33GetMacro(RegistrationMetric, MetricSelection);
 		Reg33SetMacro(RegistrationMetric, MetricSelection);
@@ -298,6 +303,7 @@ private:
 		itkBooleanMacro(moving_mask);
 		itkBooleanMacro(fixed_mask);
 		itkBooleanMacro(RTplan);
+		itkBooleanMacro(autocrop);
 		itkBooleanMacro(resample);
 		itkBooleanMacro(resolution);
 		//itkBooleanMacro(verbose);

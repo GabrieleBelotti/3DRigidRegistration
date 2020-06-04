@@ -179,11 +179,13 @@ void exe_usage()
 	std::cerr << "       <-h>								Display (this) usage information\n";
 	std::cerr << "       <-v>								Verbose output [default: no]\n";
 	//std::cerr << "       <-resample <double>>				Downsample by a factor <double>\n";
-	std::cerr << "       <--like>  						Match CBCT to CT dimensions\n";
+	std::cerr << "       <--like>  							Match CBCT to CT dimensions\n";
+	std::cerr << "       <-c>  								Crop fixed to moving dimensions during registration -- speeds up the process and avoids Mutual Information issues\n";
 	std::cerr << "       <-res <double, double, double>>	Resample to <double, double, double>\n";
 	std::cerr << "       <-mm filename>						Moving Image Mask [default: no]\n";
 	std::cerr << "       <-mf filename>						Fixed Image Mask [default: no] - under construction\n";
 	std::cerr << "       <-par filename>					Output parameters filename [default: yes]\n";
+	std::cerr << "       <-rt filename>  					Beta version of Isocenter alignment -- not currently working on LPI images\n";
 	//std::cerr << "       <-p>							Permute image convention order (coronal to axial first) [default: no]\n";
 	//std::cerr << "       <-iso double double double>    Align CBCT to isocenter [default: yes]\n";
 	//std::cerr << "       <-s>							Scale image intensity [default: no] - calibration work in progress \n";
@@ -231,20 +233,21 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			std::cout << "RTplan reading\n";
 			ok = true;
 			this->RTplanFilename = argv[1];
-			unsigned int count_iso = 0;
-			double IsocenterBase[10][3];
-			if (this->IsocenterSearch(this->RTplanFilename, count_iso, IsocenterBase))
-			{
-				this->RTplan = false;
-				std::cerr << "FAILED\n";
-			}
-			else
-			{
-				this->RTplan = true;
-				Isocenter[0] = IsocenterBase[0][0];
-				Isocenter[1] = IsocenterBase[0][1];
-				Isocenter[2] = IsocenterBase[0][2];
-			}
+			this->ReadIsocenter();
+			//unsigned int count_iso = 0;
+			//double IsocenterBase[10][3];
+			//if (this->IsocenterSearch(this->RTplanFilename, count_iso, IsocenterBase))
+			//{
+			//	this->RTplan = false;
+			//	std::cerr << "FAILED\n";
+			//}
+			//else
+			//{
+			//	this->RTplan = true;
+			//	Isocenter[0] = IsocenterBase[0][0];
+			//	Isocenter[1] = IsocenterBase[0][1];
+			//	Isocenter[2] = IsocenterBase[0][2];
+			//}
 			argc--; argv++;
 		}
 
@@ -262,6 +265,15 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			this->verbose = true;
 			continue;
 			std::cout << "Verbose execution selected\n";
+		}
+
+		if ((this->ok == false) && (strcmp(argv[1], "-c") == 0))
+		{
+			argc--; argv++;
+			this->ok = true;
+			this->autocrop = true;
+			continue;
+			std::cout << "Autocropping selected\n";
 		}
 
 		if ((ok == false) && (strcmp(argv[1], "--like") == 0))
@@ -394,6 +406,25 @@ _3DRegistration::~_3DRegistration()
 	//optimizer->Delete();
 }
 
+bool _3DRegistration::ReadIsocenter()
+{
+	bool error_isocenter = EXIT_FAILURE;
+	unsigned int count_iso = 0;
+	double IsocenterBase[10][3];
+	if (error_isocenter = this->IsocenterSearch(this->RTplanFilename, count_iso, IsocenterBase))
+	{
+		this->RTplan = false;
+		std::cerr << "FAILED\n";
+	}
+	else
+	{
+		this->RTplan = true;
+		this->Isocenter[0] = IsocenterBase[0][0];
+		this->Isocenter[1] = IsocenterBase[0][1];
+		this->Isocenter[2] = IsocenterBase[0][2];
+	}
+	return error_isocenter;
+}
 bool _3DRegistration::StartRegistration()
 {
 	
@@ -504,13 +535,6 @@ bool _3DRegistration::StartRegistration()
 
 	resampler->SetTransform(finalTransform);
 	resampler->SetInput(movingImage);
-
-	//FixedImageType::Pointer fixedImage = fixedImageReader->GetOutput();
-
-	//resampler->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
-	//resampler->SetOutputOrigin(fixedImage->GetOrigin());
-	//resampler->SetOutputSpacing(fixedImage->GetSpacing());
-	//resampler->SetOutputDirection(fixedImage->GetDirection());
 
 	/*MovingImageType::PointType*/ FinalMovingOrigin = movingImage->GetOrigin();
 	FinalMovingOrigin[0] = FinalMovingOrigin[0] - finalTranslation[0];
@@ -734,12 +758,25 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 	itk::ImageRegion<this->Dimension> MovingRegion = ReferenceImage->GetLargestPossibleRegion();
 	itk::ImageRegion<this->Dimension> OutputRegion;
 
+	const FixedImageType::DirectionType& FixedDirection = fixedImage->GetDirection();
+	MovingImageType::DirectionType& OutputDirection = MovingImageType::DirectionType::Matrix();
+	OutputDirection.SetIdentity(); // why setting RAI orientation?
+
+	using OrientationAdapterType = itk::SpatialOrientationAdapter;
+	itk::SpatialOrientation::ValidCoordinateOrientationFlags FixedOrientationFlag;
+	
+	const MovingImageType::DirectionType& MovingDirection = movingImage->GetDirection();
+
+	OrientationAdapterType OrientationAdapter;
+	FixedOrientationFlag = OrientationAdapter.FromDirectionCosines(FixedDirection);
+
 	FixedImageType::SizeType InputSize = FixedRegion.GetSize();
 	MovingImageType::SizeType ReferenceSize = MovingRegion.GetSize();
 
 	FixedImageType::SpacingType InputSpacing = Image2Crop->GetSpacing();
 	MovingImageType::SpacingType ReferenceSpacing = ReferenceImage->GetSpacing();
-
+	//if (FixedOrientationFlag == itk::SpatialOrientation::ValidCoordinateOrientationFlags::ITK_COORDINATE_ORIENTATION_RAI)
+	//else if (OrientationFlag == itk::SpatialOrientation::ValidCoordinateOrientationFlags::ITK_COORDINATE_ORIENTATION_LPI)
 	MovingImageType::SizeType OutputSize;
 
 	FixedImageType::IndexType StartIndex{ 0 };
@@ -754,23 +791,32 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 
 	if (FixedRegion.IsInside(MovingRegion))
 	{
-		for (int kk = 0; kk < this->Dimension; kk++)
+		if (FixedOrientationFlag == itk::SpatialOrientation::ValidCoordinateOrientationFlags::ITK_COORDINATE_ORIENTATION_RAI)
 		{
-			StartIndex[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk];
-			//OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
-			LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-			UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-			OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
-			/* add some space around the cropped area to avoid losing info */
-			//if (LowerCrop[kk] <= 10)
-			//	LowerCrop[kk] = 0;
-			//else
-			//	LowerCrop[kk] -= padding_value[kk];
 
-			//if (UpperCrop[kk] <= 10)
-			//	UpperCrop[kk] = 0;
-			//else
-			//	UpperCrop[kk] -= padding_value[kk];
+			for (int kk = 0; kk < this->Dimension; kk++)
+			{
+				StartIndex[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk];
+				//OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
+				LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+				UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+				OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
+				/* add some space around the cropped area to avoid losing info */
+				//if (LowerCrop[kk] <= 10)
+				//	LowerCrop[kk] = 0;
+				//else
+				//	LowerCrop[kk] -= padding_value[kk];
+
+				//if (UpperCrop[kk] <= 10)
+				//	UpperCrop[kk] = 0;
+				//else
+				//	UpperCrop[kk] -= padding_value[kk];
+			}
+		}
+		else
+		{
+			std::cerr << "LPI orientation currently not supported in ROI cropping utility\n";
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -1065,7 +1111,7 @@ bool _3DRegistration::Initialize()
 
 	if (verbose)
 		std::cout << "Create Initial transform\n";
-	
+	// Aligning the moving image to isocenter if RTPlan is provided --> FIX FOR PRONE PATIENTS AKA LPI CONFIG
 	if (RTplan)
 	{
 		TransformType::InputPointType centerMoving;
@@ -1102,6 +1148,9 @@ bool _3DRegistration::Initialize()
 			return EXIT_FAILURE;
 		}
 		movingImage = IsoAlignment->GetOutput();
+	}
+	if (this->RTplan || this->autocrop)
+	{
 		if (this->debug)
 		{
 			WriterType::Pointer      writer_dbg_iso = WriterType::New();
@@ -1159,7 +1208,7 @@ bool _3DRegistration::Initialize()
 				//CastFilterType::Pointer  caster =  CastFilterType::New();
 
 				reader_dbg_crop->SetFileName("Debug_fixed_crop.mha");
-								
+
 				try
 				{
 					std::cout << "Reading cropped CT\n";
@@ -1169,7 +1218,7 @@ bool _3DRegistration::Initialize()
 				}
 				catch (itk::ExceptionObject& error)
 				{
-					std::cerr << "ExceptionObject caught while reading writtend cropped CT!" << std::endl;
+					std::cerr << "ExceptionObject caught while reading written cropped CT!" << std::endl;
 					std::cerr << error << std::endl;
 					return EXIT_FAILURE;
 				}
@@ -1182,6 +1231,7 @@ bool _3DRegistration::Initialize()
 			}
 		}
 	}
+	
 
 	if (verbose)
 		std::cout << "Set Images to Registration method\n";
