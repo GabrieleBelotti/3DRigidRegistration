@@ -791,8 +791,8 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 
 	unsigned int padding_value[this->Dimension] = { 10, 10, 5 };
 
-	if (FixedRegion.IsInside(MovingRegion))
-	{
+	//if (FixedRegion.IsInside(MovingRegion))
+	//{
 		if (FixedOrientationFlag == itk::SpatialOrientation::ValidCoordinateOrientationFlags::ITK_COORDINATE_ORIENTATION_RAI)
 		{
 
@@ -821,23 +821,31 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 		}
 		else
 		{
-			StartIndex[0] = (- OutputOrigin[0] + InputOrigin[0]) / InputSpacing[0];
-			StartIndex[1] = (- OutputOrigin[1] + InputOrigin[1]) / InputSpacing[1];
-			StartIndex[2] = (OutputOrigin[2] - InputOrigin[2]) / InputSpacing[2];
+			temp = (-OutputOrigin[0] + InputOrigin[0]) / InputSpacing[0];
+			if (temp < 0) temp = 0;
+			StartIndex[0] = temp;
+			temp = (-OutputOrigin[1] + InputOrigin[1]) / InputSpacing[1];
+			if (temp < 0) temp = 0;
+			StartIndex[1] = temp;
+			temp = (OutputOrigin[2] - InputOrigin[2]) / InputSpacing[2];
+			if (temp < 0) temp = 0;
+			StartIndex[2] = temp;
 			for (int kk = 0; kk < this->Dimension; kk++)
 			{
 				LowerCrop[kk] = StartIndex[kk];
-				UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+				temp = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+				if (temp < 0) temp = 0;
+				UpperCrop[kk] = temp;
 				OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
 			}
 		}
-	}
+	//}
 
-	else
-	{
-		std::cerr << "Reference Image is not completely inside the Fixed one --> cropping is not supported\n";
-		return EXIT_FAILURE;
-	}
+	//else
+	//{
+	//	std::cerr << "Reference Image is not completely inside the Fixed one --> cropping is not supported\n";
+	//	return EXIT_FAILURE;
+	//}
 
 	std::cout << "Input Size " << InputSize << std::endl;
 	std::cout << "Reference Size " << ReferenceSize << std::endl;
