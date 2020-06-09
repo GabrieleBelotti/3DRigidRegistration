@@ -554,7 +554,7 @@ bool _3DRegistration::StartRegistration()
 		this->FinalMovingSize = fixedImage->GetLargestPossibleRegion().GetSize();
 	}
 	resampler->SetOutputOrigin(FinalMovingOrigin);
-	resampler->SetDefaultPixelValue(-1000);
+	resampler->SetDefaultPixelValue(-1024);
 	resampler->SetSize(this->FinalMovingSize);
 	resampler->SetOutputSpacing(this->FinalMovingSpacing);
 	resampler->SetOutputDirection(fixedImage->GetDirection());
@@ -754,6 +754,8 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 
 bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType::Pointer ReferenceImage, FixedImageType::Pointer & OutputImage)
 {
+	double temp; //utility for calculation
+
 	itk::ImageRegion<this->Dimension> FixedRegion = Image2Crop->GetLargestPossibleRegion();
 	itk::ImageRegion<this->Dimension> MovingRegion = ReferenceImage->GetLargestPossibleRegion();
 	itk::ImageRegion<this->Dimension> OutputRegion;
@@ -796,11 +798,15 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 
 			for (int kk = 0; kk < this->Dimension; kk++)
 			{
-				StartIndex[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk];
-				//OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
-				LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-				UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+				temp = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk];
+				if (temp < 0) temp = 0;
+				StartIndex[kk] = temp;
+				LowerCrop[kk] = temp; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+				temp = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk])));
+				if (temp < 0) temp = 0;
+				UpperCrop[kk] = temp; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
 				OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
+				//OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
 				/* add some space around the cropped area to avoid losing info */
 				//if (LowerCrop[kk] <= 10)
 				//	LowerCrop[kk] = 0;
