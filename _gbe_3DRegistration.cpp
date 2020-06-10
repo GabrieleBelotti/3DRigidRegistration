@@ -1424,8 +1424,8 @@ bool _3DRegistration::SetLevels()
 
 	for (unsigned int i = 0; i < this->numberOfLevels; i++)
 	{
-		this->shrinkFactorsPerLevel[i] = ShrinkFactorInput[i];
-		this->smoothingSigmasPerLevel[i] = SmoothingSigmaInput[i];
+		this->shrinkFactorsPerLevel[i] = 1; //ShrinkFactorInput[i];
+		this->smoothingSigmasPerLevel[i] = 0; //SmoothingSigmaInput[i];
 	}
 	registration->SetNumberOfLevels(this->numberOfLevels);
 	registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);

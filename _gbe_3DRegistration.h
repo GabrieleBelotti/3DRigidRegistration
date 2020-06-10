@@ -165,7 +165,7 @@ private:
 	TransformType::InputPointType Isocenter;
 
 	/* Registration parameters */
-	const unsigned int numberOfLevels = 2;
+	const unsigned int numberOfLevels = 1;//2;
 
 	double shrinkFactor = 1;
 	//FixedImageType::SpacingType ResampleSpacing;
