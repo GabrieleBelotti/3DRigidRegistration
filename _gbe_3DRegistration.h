@@ -165,12 +165,21 @@ private:
 	TransformType::InputPointType Isocenter;
 
 	/* Registration parameters */
-	const unsigned int numberOfLevels = 1;
+	const unsigned int numberOfLevels = 2;
+
 	double shrinkFactor = 1;
 	//FixedImageType::SpacingType ResampleSpacing;
 	FixedImageType::SpacingType FixedImageResampleSpacing;
 	FixedImageType::SpacingType MovingImageResampleSpacing;
 	float DefaultPixelValue = -1024;
+	typedef OptimizerType::ScalesType       OptimizerScalesType;
+	const double translationScale = 1.0;
+	const double rotationScale = 1.0 / dtr;
+
+	RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
+	uint64_t ShrinkFactorInput[2] = {2,1};
+	RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+	uint64_t SmoothingSigmaInput[2] = {2,0};
 
 	/* filenames */
 	std::string Outputfilename = "CBCT_registered.mha";
@@ -208,24 +217,12 @@ private:
 	MaskType::Pointer  spatialObjectMovingMask = MaskType::New();
 	MaskType::Pointer  spatialObjectFixedMask = MaskType::New();
 
-	typedef itk::CenteredTransformInitializer<
-		TransformType,
-		FixedImageType,
-		MovingImageType >  TransformInitializerType;
-	TransformInitializerType::Pointer initializer =
-		TransformInitializerType::New();
-
-	//typedef TransformType::VersorType  VersorType;
-	//typedef VersorType::VectorType     VectorType;
-	//VersorType     rotation;
-	//VectorType     axis;
-
-	typedef OptimizerType::ScalesType       OptimizerScalesType;
-	const double translationScale = 1.0;
-	const double rotationScale = 1.0 / dtr;
-
-	RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
-	RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+	//typedef itk::CenteredTransformInitializer<
+	//	TransformType,
+	//	FixedImageType,
+	//	MovingImageType >  TransformInitializerType;
+	//TransformInitializerType::Pointer initializer =
+	//	TransformInitializerType::New();
 
 	typedef  unsigned char                                          OutputPixelType;
 	typedef itk::Image< OutputPixelType, Dimension >                OutputImageType;

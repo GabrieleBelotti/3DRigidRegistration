@@ -184,7 +184,7 @@ void exe_usage()
 	std::cerr << "       <-res <double, double, double>>	Resample both images to <double, double, double>\n";
 	std::cerr << "       <-fres <double, double, double>>	Resample fixed image to <double, double, double>\n";
 	std::cerr << "       <-mres <double, double, double>>	Resample moving image to <double, double, double>\n";
-	std::cerr << "       <-dpix <float>>	Set Default Pixel Value to <float>\n";
+	std::cerr << "       <-dpix <float>>					Set Default Pixel Value to <float>\n";
 	std::cerr << "       <-mm filename>						Moving Image Mask [default: no]\n";
 	std::cerr << "       <-mf filename>						Fixed Image Mask [default: no] - under construction\n";
 	std::cerr << "       <-par filename>					Output parameters filename [default: yes]\n";
@@ -237,20 +237,6 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			ok = true;
 			this->RTplanFilename = argv[1];
 			this->ReadIsocenter();
-			//unsigned int count_iso = 0;
-			//double IsocenterBase[10][3];
-			//if (this->IsocenterSearch(this->RTplanFilename, count_iso, IsocenterBase))
-			//{
-			//	this->RTplan = false;
-			//	std::cerr << "FAILED\n";
-			//}
-			//else
-			//{
-			//	this->RTplan = true;
-			//	Isocenter[0] = IsocenterBase[0][0];
-			//	Isocenter[1] = IsocenterBase[0][1];
-			//	Isocenter[2] = IsocenterBase[0][2];
-			//}
 			argc--; argv++;
 		}
 
@@ -353,6 +339,37 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			//this->resolution = true;
 			continue;
 		}
+
+
+		//if ((this->ok == false) && (strcmp(argv[1], "-shrink") == 0))
+		//{
+		//	argc--; argv++;
+		//	ok = true;
+		//	this->shrinkFactorsPerLevel. atof(argv[1]);
+		//	argc--; argv++;
+		//	this->FixedImageResampleSpacing[1] = atof(argv[1]);
+		//	argc--; argv++;
+		//	this->FixedImageResampleSpacing[2] = atof(argv[1]);
+		//	argc--; argv++;
+		//	this->fixed_resample = true;
+		//	//this->resolution = true;
+		//	continue;
+		//}
+
+		//if ((this->ok == false) && (strcmp(argv[1], "-smooth") == 0))
+		//{
+		//	argc--; argv++;
+		//	ok = true;
+		//	this->smoothingSigmaPerLevel atof(argv[1]);
+		//	argc--; argv++;
+		//	this->FixedImageResampleSpacing[1] = atof(argv[1]);
+		//	argc--; argv++;
+		//	this->FixedImageResampleSpacing[2] = atof(argv[1]);
+		//	argc--; argv++;
+		//	this->fixed_resample = true;
+		//	//this->resolution = true;
+		//	continue;
+		//}
 
 		if ((this->ok == false) && (strcmp(argv[1], "-resample") == 0))
 		{
@@ -1319,7 +1336,9 @@ bool _3DRegistration::Initialize()
 	registration->SetMovingImage(movingImage);
 	if (verbose)
 		std::cout << "Done\n";
-	
+	using FixedInterpolatorType = itk::BSplineResampleImageFunction<FixedImageType, double>;
+	FixedInterpolatorType::Pointer fixed_interpolator = FixedInterpolatorType::New();
+	metric->SetFixedInterpolator(fixed_interpolator);
 	registration->SetMetric(metric);
 	registration->SetOptimizer(optimizer);
 
@@ -1403,8 +1422,8 @@ bool _3DRegistration::SetLevels()
 
 	for (unsigned int i = 0; i < this->numberOfLevels; i++)
 	{
-		this->shrinkFactorsPerLevel[i] = 1;
-		this->smoothingSigmasPerLevel[i] = 0;
+		this->shrinkFactorsPerLevel[i] = ShrinkFactorInput[i];
+		this->smoothingSigmasPerLevel[i] = SmoothingSigmaInput[i];
 	}
 	registration->SetNumberOfLevels(this->numberOfLevels);
 	registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
