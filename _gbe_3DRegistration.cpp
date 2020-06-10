@@ -613,8 +613,10 @@ bool _3DRegistration::StartRegistration()
 	}
 	else
 	{
-		this->FinalMovingSpacing = fixedImage->GetSpacing();
-		this->FinalMovingSize = fixedImage->GetLargestPossibleRegion().GetSize();
+		//this->FinalMovingSpacing = fixedImage->GetSpacing();
+		//this->FinalMovingSize = fixedImage->GetLargestPossibleRegion().GetSize(); //THIS GOES UNDER "REAL" OPTIONAL FLAG
+		this->FinalMovingSpacing = movingImage->GetSpacing();
+		this->FinalMovingSize = movingImage->GetLargestPossibleRegion().GetSize(); //THIS GOES UNDER "REAL" OPTIONAL FLAG
 	}
 	resampler->SetOutputOrigin(FinalMovingOrigin);
 	resampler->SetDefaultPixelValue(this->DefaultPixelValue);
