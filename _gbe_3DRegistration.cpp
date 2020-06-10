@@ -182,6 +182,7 @@ void exe_usage()
 	std::cerr << "       <--like>  							Match CBCT to CT dimensions\n";
 	std::cerr << "       <-c>  								Crop fixed to moving dimensions during registration -- speeds up the process and avoids Mutual Information issues\n";
 	std::cerr << "       <-res <double, double, double>>	Resample to <double, double, double>\n";
+	std::cerr << "       <-dpix <float>>	Set Default Pixel Value to <float>\n";
 	std::cerr << "       <-mm filename>						Moving Image Mask [default: no]\n";
 	std::cerr << "       <-mf filename>						Fixed Image Mask [default: no] - under construction\n";
 	std::cerr << "       <-par filename>					Output parameters filename [default: yes]\n";
@@ -289,6 +290,16 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			argc--; argv++;
 			ok = true;
 			debug = true;
+			continue;
+		}
+
+		if ((this->ok == false) && (strcmp(argv[1], "-dpix") == 0))
+		{
+			argc--; argv++;
+			ok = true;
+			//this->DefaultPixelValue = atof(argv[1]);
+			this->SetDefaultPixelValue(atof(argv[1]));
+			argc--; argv++;
 			continue;
 		}
 
@@ -554,7 +565,7 @@ bool _3DRegistration::StartRegistration()
 		this->FinalMovingSize = fixedImage->GetLargestPossibleRegion().GetSize();
 	}
 	resampler->SetOutputOrigin(FinalMovingOrigin);
-	resampler->SetDefaultPixelValue(-1024);
+	resampler->SetDefaultPixelValue(this->DefaultPixelValue);
 	resampler->SetSize(this->FinalMovingSize);
 	resampler->SetOutputSpacing(this->FinalMovingSpacing);
 	resampler->SetOutputDirection(fixedImage->GetDirection());
@@ -639,6 +650,10 @@ bool _3DRegistration::StartRegistration()
 bool _3DRegistration::Resample(FixedImageType::Pointer InputImage, FixedImageType::SpacingType OutputSpacing , FixedImageType::Pointer &OutputImage)
 {
 	ResampleFilterType::Pointer downsampler = ResampleFilterType::New();
+
+	using InterpolatorType = itk::BSplineResampleImageFunction<MovingImageType, double>;
+	InterpolatorType::Pointer interpolator = InterpolatorType::New();
+
 	TransformType::Pointer IdentityTransform = TransformType::New();
 	IdentityTransform->SetIdentity();
 	downsampler->SetTransform(IdentityTransform);
@@ -649,12 +664,14 @@ bool _3DRegistration::Resample(FixedImageType::Pointer InputImage, FixedImageTyp
 	size[1] = size[1] / (OutputSpacing[1] / InputSpacing[1]);
 	size[2] = size[2] / (OutputSpacing[2] / InputSpacing[2]);
 	downsampler->SetSize(size);
+	downsampler->SetInterpolator(interpolator);
 	//downsampler->SetSize(InputImage->GetLargestPossibleRegion().GetSize());
+	//downsampler->SetInterpolator()
 	downsampler->SetInput(InputImage);
 	downsampler->SetOutputOrigin(InputImage->GetOrigin());
 	downsampler->SetOutputSpacing(OutputSpacing);
 	downsampler->SetOutputDirection(InputImage->GetDirection());
-	downsampler->SetDefaultPixelValue(-1000);
+	downsampler->SetDefaultPixelValue(this->DefaultPixelValue);
 	OutputImage = downsampler->GetOutput();
 	try
 	{

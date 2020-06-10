@@ -21,6 +21,7 @@
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkResampleImageFilter.h"
+#include "itkBSplineResampleImageFunction.h"
 #include "itkCastImageFilter.h"
 #include "itkSubtractImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
@@ -166,6 +167,7 @@ private:
 	const unsigned int numberOfLevels = 1;
 	double shrinkFactor = 1;
 	FixedImageType::SpacingType ResampleSpacing;
+	float DefaultPixelValue = -1024;
 
 	/* filenames */
 	std::string Outputfilename = "CBCT_registered.mha";
@@ -290,6 +292,9 @@ private:
 		Reg33SetMacro(RTplanFilename, std::string);		
 		Reg33GetMacro(Outputfilename, std::string);
 		Reg33SetMacro(Outputfilename, std::string);
+
+		Reg33GetMacro(DefaultPixelValue, float);
+		Reg33SetMacro(DefaultPixelValue, float);
 
 		/*char* fixedImagefilename = NULL;
 		char* movingImagefilename = NULL;
