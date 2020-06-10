@@ -181,7 +181,9 @@ void exe_usage()
 	//std::cerr << "       <-resample <double>>				Downsample by a factor <double>\n";
 	std::cerr << "       <--like>  							Match CBCT to CT dimensions\n";
 	std::cerr << "       <-c>  								Crop fixed to moving dimensions during registration -- speeds up the process and avoids Mutual Information issues\n";
-	std::cerr << "       <-res <double, double, double>>	Resample to <double, double, double>\n";
+	std::cerr << "       <-res <double, double, double>>	Resample both images to <double, double, double>\n";
+	std::cerr << "       <-fres <double, double, double>>	Resample fixed image to <double, double, double>\n";
+	std::cerr << "       <-mres <double, double, double>>	Resample moving image to <double, double, double>\n";
 	std::cerr << "       <-dpix <float>>	Set Default Pixel Value to <float>\n";
 	std::cerr << "       <-mm filename>						Moving Image Mask [default: no]\n";
 	std::cerr << "       <-mf filename>						Fixed Image Mask [default: no] - under construction\n";
@@ -307,14 +309,48 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 		{
 			argc--; argv++;
 			ok = true;
-			this->ResampleSpacing[0] = atof(argv[1]);
+			this->FixedImageResampleSpacing[0] = atof(argv[1]);
+			this->MovingImageResampleSpacing[0] = atof(argv[1]);
 			argc--; argv++;
-			this->ResampleSpacing[1] = atof(argv[1]);
+			this->FixedImageResampleSpacing[1] = atof(argv[1]);
+			this->MovingImageResampleSpacing[1] = atof(argv[1]);
 			argc--; argv++;
-			this->ResampleSpacing[2] = atof(argv[1]);
+			this->FixedImageResampleSpacing[2] = atof(argv[1]);
+			this->MovingImageResampleSpacing[2] = atof(argv[1]);
 			argc--; argv++;
-			this->resample = true;
+			this->fixed_resample = true;
+			this->moving_resample = true;
 			this->resolution = true;
+			continue;
+		}
+
+		if ((this->ok == false) && (strcmp(argv[1], "-fres") == 0))
+		{
+			argc--; argv++;
+			ok = true;
+			this->FixedImageResampleSpacing[0] = atof(argv[1]);
+			argc--; argv++;
+			this->FixedImageResampleSpacing[1] = atof(argv[1]);
+			argc--; argv++;
+			this->FixedImageResampleSpacing[2] = atof(argv[1]);
+			argc--; argv++;
+			this->fixed_resample = true;
+			//this->resolution = true;
+			continue;
+		}
+
+		if ((this->ok == false) && (strcmp(argv[1], "-mres") == 0))
+		{
+			argc--; argv++;
+			ok = true;
+			this->MovingImageResampleSpacing[0] = atof(argv[1]);
+			argc--; argv++;
+			this->MovingImageResampleSpacing[1] = atof(argv[1]);
+			argc--; argv++;
+			this->MovingImageResampleSpacing[2] = atof(argv[1]);
+			argc--; argv++;
+			this->moving_resample = true;
+			//this->resolution = true;
 			continue;
 		}
 
@@ -323,7 +359,6 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			argc--; argv++;
 			this->ok = true;
 			this->shrinkFactor = atof(argv[1]);
-			this->resample = true;
 			this->shrinking = true;
 			continue;
 		}
@@ -683,7 +718,7 @@ bool _3DRegistration::Resample(FixedImageType::Pointer InputImage, FixedImageTyp
 	}
 	catch (itk::ExceptionObject& error)
 	{
-		std::cerr << "ExceptionObject caught !" << std::endl;
+		std::cerr << "ExceptionObject caught during resampling !" << std::endl;
 		std::cerr << error << std::endl;
 		return EXIT_FAILURE;
 	}
@@ -1047,17 +1082,20 @@ bool _3DRegistration::Initialize()
 	}
 	/*End of reading masks if requested/available*/
 
+	fixedImage = fixedImageReader->GetOutput();
+	movingImage = movingImageReader->GetOutput();
 
-	if (resample)
+	if (this->moving_resample || this->fixed_resample)
 	{
-		FixedImageType::Pointer fixedResampledImage;
-		MovingImageType::Pointer movingResampledImage;
-
-		if (resolution)
+		
+		if (verbose)
+			std::cout << "Resampling by resolution given\n";
+		if (this->fixed_resample)
 		{
-			if (verbose)
-				std::cout << "Resampling by resolution given\n";
-			if (!Resample(fixedImageReader->GetOutput(), ResampleSpacing, fixedResampledImage))
+
+			FixedImageType::Pointer fixedResampledImage;
+			
+			if (!Resample(fixedImageReader->GetOutput(), FixedImageResampleSpacing, fixedResampledImage))
 			{
 				if (verbose)
 				{
@@ -1075,7 +1113,38 @@ bool _3DRegistration::Initialize()
 			{
 				std::cout << "CT resampling unsuccessful\n";
 			}
-			if (!Resample(movingImageReader->GetOutput(), ResampleSpacing, movingResampledImage))
+			if (debug)
+			{
+				WriterType::Pointer      writer_dbg = WriterType::New();
+				//CastFilterType::Pointer  caster =  CastFilterType::New();
+
+				writer_dbg->SetFileName("Debug_Resampling.mha");
+
+				//caster->SetInput( resampler->GetOutput() );
+				writer_dbg->SetInput(fixedResampledImage);
+				//writer_dbg->SetInput(fixedResampleImage);
+				try
+				{
+					std::cout << "Writing CT Resampled\n";
+					timer.Start("WriteCTRes");
+					writer_dbg->Update();
+					timer.Stop("WriteCTRes");
+				}
+				catch (itk::ExceptionObject& error)
+				{
+					std::cerr << "ExceptionObject caught !" << std::endl;
+					std::cerr << error << std::endl;
+					return EXIT_FAILURE;
+				}
+			}
+		}
+
+		if (moving_resample)
+		{
+
+			MovingImageType::Pointer movingResampledImage;
+
+			if (!Resample(movingImageReader->GetOutput(), MovingImageResampleSpacing, movingResampledImage))
 			{
 				if (verbose)
 					std::cout << "Assign resampled image - moving\n";
@@ -1088,52 +1157,25 @@ bool _3DRegistration::Initialize()
 				std::cout << "CBCT resampling unsuccessful\n";
 			}
 		}
-		else if (shrinking)
-		{
-			if (verbose)
-				std::cout << "Resampling by shrinking given\n";
-			if (!Resample(fixedImageReader->GetOutput(), shrinkFactor, fixedResampledImage))
-			{
-				if (verbose)
-					std::cout << "Assign shrinked image - fixed\n";
-				//fixedImage = fixedResampledImage;
-			}
-			if (!Resample(movingImageReader->GetOutput(), shrinkFactor, movingResampledImage))
-			{
-				if (verbose)
-					std::cout << "Assign shrinked image - moving\n";
-				//movingImage = movingResampledImage;
-			}
-		}
-		if (debug)
-		{
-			WriterType::Pointer      writer_dbg = WriterType::New();
-			//CastFilterType::Pointer  caster =  CastFilterType::New();
-
-			writer_dbg->SetFileName("Debug Resampling.mha");
-
-			//caster->SetInput( resampler->GetOutput() );
-			writer_dbg->SetInput(fixedResampledImage);
-			//writer_dbg->SetInput(fixedResampleImage);
-			try
-			{
-				std::cout << "Writing CT Resampled\n";
-				timer.Start("WriteCTRes");
-				writer_dbg->Update();
-				timer.Stop("WriteCTRes");
-			}
-			catch (itk::ExceptionObject& error)
-			{
-				std::cerr << "ExceptionObject caught !" << std::endl;
-				std::cerr << error << std::endl;
-				return EXIT_FAILURE;
-			}
-		}
-	}
-	else
-	{
-		fixedImage = fixedImageReader->GetOutput();
-		movingImage = movingImageReader->GetOutput();
+		// DELETE SHRINKING ROUTINE
+		//else if (shrinking)
+		//{
+		//	if (verbose)
+		//		std::cout << "Resampling by shrinking given\n";
+		//	if (!Resample(fixedImageReader->GetOutput(), shrinkFactor, fixedResampledImage))
+		//	{
+		//		if (verbose)
+		//			std::cout << "Assign shrinked image - fixed\n";
+		//		//fixedImage = fixedResampledImage;
+		//	}
+		//	if (!Resample(movingImageReader->GetOutput(), shrinkFactor, movingResampledImage))
+		//	{
+		//		if (verbose)
+		//			std::cout << "Assign shrinked image - moving\n";
+		//		//movingImage = movingResampledImage;
+		//	}
+		//}
+		
 	}
 
 	// Gathering information about the images
@@ -1277,10 +1319,11 @@ bool _3DRegistration::Initialize()
 	registration->SetMovingImage(movingImage);
 	if (verbose)
 		std::cout << "Done\n";
-
+	
 	registration->SetMetric(metric);
 	registration->SetOptimizer(optimizer);
 
+	// INITIALIZER SETS THE INITIAL TRANSFORM AND CAN OVERRIDE PREVIOUS ACTIONS
 	//else
 	//{
 	//	initialTransform->SetIdentity();
@@ -1329,7 +1372,10 @@ bool _3DRegistration::Initialize()
 	optimizerScales[5] = translationScale;
 	optimizer->SetScales(optimizerScales);
 	optimizer->SetNumberOfIterations(200);
-
+	optimizer->SetGradientConvergenceTolerance(1e-4);
+	//optimizer->SetLineSearchAccuracy(0.5); //This makes for a more accurate line search the lower the value (default is 0.9)
+	//optimizer->DoEstimateScalesOff();
+	
 	/* POWELL */
 
 	//optimizer->SetMaximumIteration(10);

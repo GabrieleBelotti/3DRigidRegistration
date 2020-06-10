@@ -144,7 +144,8 @@ private:
 	bool moving_mask = false;
 	bool fixed_mask = false;
 	bool debug = false;
-	bool resample = false;
+	bool fixed_resample = false;
+	bool moving_resample = false;
 	bool resolution = false;
 	bool shrinking = false;
 	bool RTplan = false;
@@ -166,7 +167,9 @@ private:
 	/* Registration parameters */
 	const unsigned int numberOfLevels = 1;
 	double shrinkFactor = 1;
-	FixedImageType::SpacingType ResampleSpacing;
+	//FixedImageType::SpacingType ResampleSpacing;
+	FixedImageType::SpacingType FixedImageResampleSpacing;
+	FixedImageType::SpacingType MovingImageResampleSpacing;
 	float DefaultPixelValue = -1024;
 
 	/* filenames */
@@ -270,10 +273,12 @@ private:
 		Reg33SetMacro(fixed_mask, bool);
 		Reg33GetMacro(RTplan, bool);
 		Reg33SetMacro(RTplan, bool);
-		Reg33GetMacro(resample, bool);
-		Reg33SetMacro(resample, bool);
-		Reg33GetMacro(resolution, bool);
-		Reg33SetMacro(resolution, bool);
+		Reg33GetMacro(moving_resample, bool);
+		Reg33SetMacro(moving_resample, bool);
+		Reg33GetMacro(fixed_resample, bool);
+		Reg33SetMacro(fixed_resample, bool);
+		//Reg33GetMacro(resolution, bool);
+		//Reg33SetMacro(resolution, bool);
 		Reg33GetMacro(autocrop, bool);
 		Reg33SetMacro(autocrop, bool);
 
@@ -309,10 +314,9 @@ private:
 		itkBooleanMacro(fixed_mask);
 		itkBooleanMacro(RTplan);
 		itkBooleanMacro(autocrop);
-		itkBooleanMacro(resample);
-		itkBooleanMacro(resolution);
-		//itkBooleanMacro(verbose);
-
+		itkBooleanMacro(moving_resample);
+		itkBooleanMacro(fixed_resample);
+		//itkBooleanMacro(resolution);
 
 };
 
