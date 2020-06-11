@@ -275,6 +275,14 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			std::cout << "Selected fixed dimensions for output\n";
 		}
 
+		if ((ok == false) && (strcmp(argv[1], "--real") == 0))
+		{
+			argc--; argv++;
+			ok = true;
+			this->real = true;
+			std::cout << "Selected moving size with fixed resolution for output\n";
+		}
+
 		if ((this->ok == false) && (strcmp(argv[1], "-dbg") == 0))
 		{
 			argc--; argv++;
@@ -493,7 +501,7 @@ bool _3DRegistration::ReadIsocenter()
 
 bool _3DRegistration::StartRegistration()
 {
-	
+
 	//if (!this->Initialize())
 	//{
 	//	if (verbose)
@@ -526,7 +534,7 @@ bool _3DRegistration::StartRegistration()
 		std::cerr << error << std::endl;
 		return EXIT_FAILURE;
 	}
-	
+
 	std::cout << "Updated\n";
 
 	try
@@ -585,7 +593,7 @@ bool _3DRegistration::StartRegistration()
 	std::cout << " Translation Z    = " << finalTranslation[2] << std::endl;
 	std::cout << " Iterations       = " << numberOfIterations << std::endl;
 	std::cout << " Metric value     = " << bestValue << std::endl;
-	
+
 	TransformType::Pointer finalTransform = TransformType::New();
 
 	finalTransform->SetFixedParameters(registration->GetOutput()->Get()->GetFixedParameters());
@@ -600,7 +608,8 @@ bool _3DRegistration::StartRegistration()
 	ResampleFilterType::Pointer resampler = ResampleFilterType::New();
 
 	resampler->SetTransform(finalTransform);
-	resampler->SetInput(movingImage);
+	//resampler->SetInput(movingImage);
+	resampler->SetInput(movingImageReader->GetOutput());
 
 	/*MovingImageType::PointType*/ FinalMovingOrigin = movingImage->GetOrigin();
 	FinalMovingOrigin[0] = FinalMovingOrigin[0] - finalTranslation[0];
@@ -614,12 +623,17 @@ bool _3DRegistration::StartRegistration()
 		this->FinalMovingSize = this->OriginalFixedSize;
 		resampler->SetInput(movingImageReader->GetOutput());
 	}
-	else
+	else if (this->real)
 	{
-		//this->FinalMovingSpacing = fixedImage->GetSpacing();
-		//this->FinalMovingSize = fixedImage->GetLargestPossibleRegion().GetSize(); //THIS GOES UNDER "REAL" OPTIONAL FLAG
-		this->FinalMovingSpacing = movingImage->GetSpacing();
+		this->FinalMovingSpacing = fixedImage->GetSpacing();
 		this->FinalMovingSize = movingImage->GetLargestPossibleRegion().GetSize(); //THIS GOES UNDER "REAL" OPTIONAL FLAG
+	}
+	else //Print out CBCT with original dimensions
+	{
+		//this->FinalMovingSpacing = movingImage->GetSpacing();
+		//this->FinalMovingSize = movingImage->GetLargestPossibleRegion().GetSize();
+		this->FinalMovingSpacing = OriginalMovingSpacing;
+		this->FinalMovingSize = OriginalMovingSize; //THIS GOES UNDER "REAL" OPTIONAL FLAG
 	}
 	resampler->SetOutputOrigin(FinalMovingOrigin);
 	resampler->SetDefaultPixelValue(this->DefaultPixelValue);
@@ -653,9 +667,9 @@ bool _3DRegistration::StartRegistration()
 	//parametersFile.open(OutputTransformfilename);
 	parametersFile << std::endl << std::endl;
 	parametersFile << "Result = " << std::endl;
-	parametersFile << " versor X      = " << versorX << std::endl;
-	parametersFile << " versor Y      = " << versorY << std::endl;
-	parametersFile << " versor Z      = " << versorZ << std::endl;
+	parametersFile << " Angle around X = " << versorX / dtr << std::endl;
+	parametersFile << " Angle around Y = " << versorY / dtr << std::endl;
+	parametersFile << " Angle around Z = " << versorZ / dtr << std::endl;
 	parametersFile << " Translation X = " << finalTranslation[0] << std::endl;
 	parametersFile << " Translation Y = " << finalTranslation[1] << std::endl;
 	parametersFile << " Translation Z = " << finalTranslation[2] << std::endl;
@@ -722,7 +736,7 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 {
 	itk::ImageRegion<this->Dimension> FixedRegion = Image2Crop->GetLargestPossibleRegion();
 	itk::ImageRegion<this->Dimension> MovingRegion = ReferenceImage->GetLargestPossibleRegion();
-	
+
 	FixedImageType::SizeType InputSize = FixedRegion.GetSize();
 	MovingImageType::SizeType ReferenceSize = MovingRegion.GetSize();
 
@@ -736,7 +750,7 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 
 	FixedImageType::PointType InputOrigin = Image2Crop->GetOrigin();
 	FixedImageType::PointType OutputOrigin = ReferenceImage->GetOrigin();
-	
+
 	unsigned int padding_value[this->Dimension] = { 10, 10, 5 };
 
 	if (FixedRegion.IsInside(MovingRegion))
@@ -791,7 +805,7 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 	}
 	catch(itk::ExceptionObject &err)
 	{
-		std::cerr << "Exception caught while cropping \n" 
+		std::cerr << "Exception caught while cropping \n"
 			<< err << std::endl;
 		return EXIT_FAILURE;
 	}
@@ -922,7 +936,7 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 	//}
 	//catch(itk::ExceptionObject &err)
 	//{
-	//	std::cerr << "Exception caught while cropping \n" 
+	//	std::cerr << "Exception caught while cropping \n"
 	//		<< err << std::endl;
 	//	return EXIT_FAILURE;
 	//}
@@ -1085,14 +1099,14 @@ bool _3DRegistration::Initialize()
 
 	if (this->moving_resample || this->fixed_resample)
 	{
-		
+
 		if (verbose)
 			std::cout << "Resampling by resolution given\n";
 		if (this->fixed_resample)
 		{
 
 			FixedImageType::Pointer fixedResampledImage;
-			
+
 			if (!Resample(fixedImageReader->GetOutput(), FixedImageResampleSpacing, fixedResampledImage))
 			{
 				if (verbose)
@@ -1173,7 +1187,7 @@ bool _3DRegistration::Initialize()
 		//		//movingImage = movingResampledImage;
 		//	}
 		//}
-		
+
 	}
 
 	// Gathering information about the images
@@ -1315,7 +1329,7 @@ bool _3DRegistration::Initialize()
 			}
 		}
 	}
-	
+
 
 	if (verbose)
 		std::cout << "Set Images to Registration method\n";
@@ -1381,7 +1395,7 @@ bool _3DRegistration::Initialize()
 	optimizer->SetGradientConvergenceTolerance(1e-4);
 	//optimizer->SetLineSearchAccuracy(0.5); //This makes for a more accurate line search the lower the value (default is 0.9)
 	//optimizer->DoEstimateScalesOff();
-	
+
 	/* POWELL */
 
 	//optimizer->SetMaximumIteration(10);

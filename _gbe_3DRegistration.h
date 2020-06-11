@@ -150,6 +150,7 @@ private:
 	bool shrinking = false;
 	bool RTplan = false;
 	bool like = false;
+	bool real = false;
 	bool autocrop = false; //enhances speed (is overriden by RTPlan)
 
 	/* enumerators */
@@ -274,10 +275,12 @@ private:
 		Reg33SetMacro(moving_resample, bool);
 		Reg33GetMacro(fixed_resample, bool);
 		Reg33SetMacro(fixed_resample, bool);
-		//Reg33GetMacro(resolution, bool);
-		//Reg33SetMacro(resolution, bool);
 		Reg33GetMacro(autocrop, bool);
 		Reg33SetMacro(autocrop, bool);
+		Reg33GetMacro(real, bool);
+		Reg33SetMacro(real, bool);
+		Reg33GetMacro(like, bool);
+		Reg33SetMacro(like, bool);
 
 		Reg33GetMacro(RegistrationMetric, MetricSelection);
 		Reg33SetMacro(RegistrationMetric, MetricSelection);
@@ -313,7 +316,8 @@ private:
 		itkBooleanMacro(autocrop);
 		itkBooleanMacro(moving_resample);
 		itkBooleanMacro(fixed_resample);
-		//itkBooleanMacro(resolution);
+		itkBooleanMacro(real);
+		itkBooleanMacro(like);
 
 };
 
