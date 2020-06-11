@@ -23,7 +23,7 @@ Suggested options are:
 
 Currently the registration uses a BSpline interpolator for the registration process and also for the optional resamplings. Such choice slows down both processes but guarantee a higher degree of convergence.
 
-At this stage the class is written to output and write and image. This could be optional, while the tranform should be fed to external routines
+At this stage the class is written to output and write and image. This could be optional, while the transform should be fed to external routines
 
 ## Current developing
 
