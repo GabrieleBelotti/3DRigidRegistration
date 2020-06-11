@@ -188,15 +188,11 @@ void exe_usage()
 	std::cerr << "       <-mm filename>						Moving Image Mask [default: no]\n";
 	std::cerr << "       <-mf filename>						Fixed Image Mask [default: no] - under construction\n";
 	std::cerr << "       <-par filename>					Output parameters filename [default: yes]\n";
-<<<<<<< HEAD
 	std::cerr << "       <-rt filename>  					Beta version of Isocenter alignment -- not currently working on LPI images\n";
-=======
-	std::cerr << "       <-rt path/filename					RTplan path and filename for Isocenter extraction\n";
->>>>>>> 3de0f76eeb195634daa1d3582ed9655eb25314bc
 	//std::cerr << "       <-p>							Permute image convention order (coronal to axial first) [default: no]\n";
 	//std::cerr << "       <-iso double double double>    Align CBCT to isocenter [default: yes]\n";
 	//std::cerr << "       <-s>							Scale image intensity [default: no] - calibration work in progress \n";
-	std::cerr << "       <-dbg>								Debugging output [default: yes]\n";
+	std::cerr << "       <-dbg>								Debugging output [default: no]\n";
 
 	std::cerr << "       <-o filename>						Output image filename\n\n";
 	std::cerr << "											by  Gabriele Belotti\n";
@@ -730,9 +726,6 @@ bool _3DRegistration::Crop(FixedImageType::Pointer Image2Crop, FixedImageType::P
 	FixedImageType::SizeType InputSize = FixedRegion.GetSize();
 	MovingImageType::SizeType ReferenceSize = MovingRegion.GetSize();
 
-	FixedImageType::SizeType OutputSize;
-
-
 	FixedImageType::SpacingType InputSpacing = Image2Crop->GetSpacing();
 	MovingImageType::SpacingType ReferenceSpacing = ReferenceImage->GetSpacing();
 
@@ -822,7 +815,7 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 
 	using OrientationAdapterType = itk::SpatialOrientationAdapter;
 	itk::SpatialOrientation::ValidCoordinateOrientationFlags FixedOrientationFlag;
-	
+
 	const MovingImageType::DirectionType& MovingDirection = movingImage->GetDirection();
 
 	OrientationAdapterType OrientationAdapter;
@@ -849,66 +842,52 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 
 	//if (FixedRegion.IsInside(MovingRegion))
 	//{
-		if (FixedOrientationFlag == itk::SpatialOrientation::ValidCoordinateOrientationFlags::ITK_COORDINATE_ORIENTATION_RAI)
-		{
-<<<<<<< HEAD
-=======
-			StartIndex[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk];
-			//OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
-			LowerCrop[kk] = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk]; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-			UpperCrop[kk] = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-			OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
+	if (FixedOrientationFlag == itk::SpatialOrientation::ValidCoordinateOrientationFlags::ITK_COORDINATE_ORIENTATION_RAI)
+	{
 
+		for (int kk = 0; kk < this->Dimension; kk++)
+		{
+			temp = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk];
+			if (temp < 0) temp = 0;
+			StartIndex[kk] = temp;
+			LowerCrop[kk] = temp; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+			temp = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk])));
+			if (temp < 0) temp = 0;
+			UpperCrop[kk] = temp; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
+			OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
+			//OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
 			/* add some space around the cropped area to avoid losing info */
 			//if (LowerCrop[kk] <= 10)
 			//	LowerCrop[kk] = 0;
 			//else
 			//	LowerCrop[kk] -= padding_value[kk];
->>>>>>> 3de0f76eeb195634daa1d3582ed9655eb25314bc
 
-			for (int kk = 0; kk < this->Dimension; kk++)
-			{
-				temp = (OutputOrigin[kk] - InputOrigin[kk]) / InputSpacing[kk];
-				if (temp < 0) temp = 0;
-				StartIndex[kk] = temp;
-				LowerCrop[kk] = temp; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-				temp = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk])));
-				if (temp < 0) temp = 0;
-				UpperCrop[kk] = temp; // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-				OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
-				//OutputSize[kk] = ReferenceSize[kk] * (ReferenceSpacing[kk] / InputSpacing[kk]);
-				/* add some space around the cropped area to avoid losing info */
-				//if (LowerCrop[kk] <= 10)
-				//	LowerCrop[kk] = 0;
-				//else
-				//	LowerCrop[kk] -= padding_value[kk];
-
-				//if (UpperCrop[kk] <= 10)
-				//	UpperCrop[kk] = 0;
-				//else
-				//	UpperCrop[kk] -= padding_value[kk];
-			}
+			//if (UpperCrop[kk] <= 10)
+			//	UpperCrop[kk] = 0;
+			//else
+			//	UpperCrop[kk] -= padding_value[kk];
 		}
-		else
+	}
+	else
+	{
+		temp = (-OutputOrigin[0] + InputOrigin[0]) / InputSpacing[0];
+		if (temp < 0) temp = 0;
+		StartIndex[0] = temp;
+		temp = (-OutputOrigin[1] + InputOrigin[1]) / InputSpacing[1];
+		if (temp < 0) temp = 0;
+		StartIndex[1] = temp;
+		temp = (OutputOrigin[2] - InputOrigin[2]) / InputSpacing[2];
+		if (temp < 0) temp = 0;
+		StartIndex[2] = temp;
+		for (int kk = 0; kk < this->Dimension; kk++)
 		{
-			temp = (-OutputOrigin[0] + InputOrigin[0]) / InputSpacing[0];
+			LowerCrop[kk] = StartIndex[kk];
+			temp = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
 			if (temp < 0) temp = 0;
-			StartIndex[0] = temp;
-			temp = (-OutputOrigin[1] + InputOrigin[1]) / InputSpacing[1];
-			if (temp < 0) temp = 0;
-			StartIndex[1] = temp;
-			temp = (OutputOrigin[2] - InputOrigin[2]) / InputSpacing[2];
-			if (temp < 0) temp = 0;
-			StartIndex[2] = temp;
-			for (int kk = 0; kk < this->Dimension; kk++)
-			{
-				LowerCrop[kk] = StartIndex[kk];
-				temp = (InputSize[kk] - (LowerCrop[kk] + ReferenceSize[kk] / (InputSpacing[kk] / ReferenceSpacing[kk]))); // Check for positivity --> we need to make sure we're superimposing a subregion to the fixed image
-				if (temp < 0) temp = 0;
-				UpperCrop[kk] = temp;
-				OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
-			}
+			UpperCrop[kk] = temp;
+			OutputSize[kk] = InputSize[kk] - (LowerCrop[kk] + UpperCrop[kk]);
 		}
+	}
 	//}
 
 	//else
@@ -950,7 +929,6 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 
 	OutputRegion.SetIndex(StartIndex);
 	OutputRegion.SetSize(OutputSize);
-
 	//FixedRegion.Crop(OutputRegion);
 
 	ROIFilter->SetRegionOfInterest(OutputRegion);
