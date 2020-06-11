@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 
 	std::cout << "Run registration function\n";
 	Registration->StartRegistration();
-	std::cout << "All done\n";
+	std::cout << "\nAll done\n";
 
 	if (Registration) delete(Registration);
 }

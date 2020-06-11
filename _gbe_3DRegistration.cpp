@@ -203,10 +203,12 @@ void exe_usage()
 
 _3DRegistration::_3DRegistration()
 {
+	timer.Start("Total");
 }
 
 _3DRegistration::_3DRegistration(int argc, char *argv[])
 {
+	timer.Start("Total");
 	std::cout << "Parsing arguments\n";
 	if (argc <= 3)
 	{
@@ -488,6 +490,7 @@ bool _3DRegistration::ReadIsocenter()
 	}
 	return error_isocenter;
 }
+
 bool _3DRegistration::StartRegistration()
 {
 	
@@ -666,40 +669,11 @@ bool _3DRegistration::StartRegistration()
 
 	parametersFile.close();
 	//timer.ExpandedReport();
+	timer.Stop("Total");
 	timer.Report();
 	return EXIT_SUCCESS;
 
 }
-
-//bool _3DRegistration::Resample(FixedImageType::Pointer InputImage, double shrinkfactor, FixedImageType::Pointer &OutputImage)
-//{
-//	ResampleFilterType::Pointer downsampler = ResampleFilterType::New();
-//	TransformType::Pointer IdentityTransform = TransformType::New();
-//	IdentityTransform->SetIdentity();
-//	downsampler->SetTransform(IdentityTransform);
-//	downsampler->SetInput(InputImage);
-//	downsampler->SetOutputOrigin(InputImage->GetOrigin());
-//	downsampler->SetOutputSpacing(InputImage->GetSpacing() / shrinkfactor);
-//	downsampler->SetOutputDirection(InputImage->GetDirection());
-//	
-//	try
-//	{
-//		if (verbose)
-//			std::cout << "Resampling\n";
-//		downsampler->Update();
-//		OutputImage = downsampler->GetOutput();
-//		OutputImage->DisconnectPipeline();
-//		if (verbose)
-//			std::cout << "Resampling done\n";
-//	}
-//	catch (itk::ExceptionObject& error)
-//	{
-//		std::cerr << "ExceptionObject caught !" << std::endl;
-//		std::cerr << error << std::endl;
-//		return EXIT_FAILURE;
-//	}
-//	return EXIT_SUCCESS;
-//}
 
 bool _3DRegistration::Resample(FixedImageType::Pointer InputImage, FixedImageType::SpacingType OutputSpacing , FixedImageType::Pointer &OutputImage)
 {
@@ -979,6 +953,7 @@ bool _3DRegistration::ROICrop(FixedImageType::Pointer Image2Crop, FixedImageType
 template<typename TMetricType>
 bool _3DRegistration::Initialize()
 {
+	timer.Start("Initialization");
 	/* Set Metric type to caller template */
 	metric = TMetricType::New();
 	/*Reading CT and CBCT images*/
@@ -1392,7 +1367,7 @@ bool _3DRegistration::Initialize()
 	optimizerScales[4] = translationScale;
 	optimizerScales[5] = translationScale;
 	optimizer->SetScales(optimizerScales);
-	optimizer->SetNumberOfIterations(200);
+	optimizer->SetNumberOfIterations(20);
 	optimizer->SetGradientConvergenceTolerance(1e-4);
 	//optimizer->SetLineSearchAccuracy(0.5); //This makes for a more accurate line search the lower the value (default is 0.9)
 	//optimizer->DoEstimateScalesOff();
@@ -1412,6 +1387,8 @@ bool _3DRegistration::Initialize()
 	optimizer->AddObserver(itk::IterationEvent(), observer);
 
 	this->SetLevels();
+
+	timer.Stop("Initialization");
 
 	return EXIT_SUCCESS;
 
