@@ -81,8 +81,11 @@ public:
 	typedef itk::ImageMaskSpatialObject<Dimension>::ImageType ImageMaskType;
 	//typedef itk::VersorRigid3DTransform< double > TransformType;
 	typedef itk::Euler3DTransform< double> TransformType;
-	FixedImageType::Pointer fixedImage;
-	MovingImageType::Pointer movingImage;
+	FixedImageType::Pointer fixedImage; //maybe pass as private
+	MovingImageType::Pointer movingImage; //maybe pass as private
+
+	ImageMaskType::Pointer fixedMask = ITK_NULLPTR; //check for compatibility of nullptr in newer version of ITK
+	ImageMaskType::Pointer movingMask = ITK_NULLPTR; //check for compatibility of nullptr in newer version of ITK
 
 	typedef FixedImageType::SpacingType    SpacingType;
 	typedef FixedImageType::PointType      OriginType;
@@ -284,6 +287,12 @@ private:
 
 		Reg33GetMacro(RegistrationMetric, MetricSelection);
 		Reg33SetMacro(RegistrationMetric, MetricSelection);
+
+		Reg33GetMacro(movingImage, MovingImageType::Pointer);
+		Reg33GetMacro(fixedImage, FixedImageType::Pointer);
+
+		Reg33GetMacro(movingMask, ImageMaskType::Pointer);
+		Reg33GetMacro(fixedMask, ImageMaskType::Pointer);
 
 		Reg33GetMacro(fixedImagefilename, std::string);
 		Reg33SetMacro(fixedImagefilename, std::string);

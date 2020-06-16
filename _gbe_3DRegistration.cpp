@@ -1391,7 +1391,7 @@ bool _3DRegistration::Initialize()
 	optimizerScales[4] = translationScale;
 	optimizerScales[5] = translationScale;
 	optimizer->SetScales(optimizerScales);
-	optimizer->SetNumberOfIterations(20);
+	optimizer->SetNumberOfIterations(25);
 	optimizer->SetGradientConvergenceTolerance(1e-4);
 	//optimizer->SetLineSearchAccuracy(0.5); //This makes for a more accurate line search the lower the value (default is 0.9)
 	//optimizer->DoEstimateScalesOff();
