@@ -83,6 +83,7 @@ public:
 	typedef itk::Euler3DTransform< double> TransformType;
 	FixedImageType::Pointer fixedImage; //maybe pass as private
 	MovingImageType::Pointer movingImage; //maybe pass as private
+	MovingImageType::Pointer outputImage; //maybe pass as private
 
 	ImageMaskType::Pointer fixedMask = ITK_NULLPTR; //check for compatibility of nullptr in newer version of ITK
 	ImageMaskType::Pointer movingMask = ITK_NULLPTR; //check for compatibility of nullptr in newer version of ITK
@@ -290,6 +291,7 @@ private:
 
 		Reg33GetMacro(movingImage, MovingImageType::Pointer);
 		Reg33GetMacro(fixedImage, FixedImageType::Pointer);
+		Reg33GetMacro(outputImage, MovingImageType::Pointer);
 
 		Reg33GetMacro(movingMask, ImageMaskType::Pointer);
 		Reg33GetMacro(fixedMask, ImageMaskType::Pointer);

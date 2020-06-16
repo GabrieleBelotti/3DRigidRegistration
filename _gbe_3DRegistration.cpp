@@ -648,6 +648,7 @@ bool _3DRegistration::StartRegistration()
 	writer->SetFileName(Outputfilename);
 
 	//caster->SetInput( resampler->GetOutput() );
+	outputImage = resampler->GetOutput(); // link the output image to the outgoing pointer
 	writer->SetInput(resampler->GetOutput());
 	try
 	{
