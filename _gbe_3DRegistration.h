@@ -188,6 +188,7 @@ private:
 
 	/* filenames */
 	std::string Outputfilename = "CBCT_registered.mha";
+	std::string OutputMaskfilename = "CBCTMask_registered.mha";
 	std::string OutputTransformfilename = "3DRigidRegistrationTransform.txt";
 	//std::string Iterationfilename = "3DRigidRegistrationIt.txt";
 
@@ -229,15 +230,16 @@ private:
 	//TransformInitializerType::Pointer initializer =
 	//	TransformInitializerType::New();
 
-	typedef  unsigned char                                          OutputPixelType;
-	typedef itk::Image< OutputPixelType, Dimension >                OutputImageType;
-	//typedef itk::CastImageFilter< FixedImageType, OutputImageType > CastFilterType;
-	typedef itk::ImageFileWriter< FixedImageType >                 WriterType;
+	//typedef float					                                OutputPixelType;
+	//typedef itk::Image< OutputPixelType, Dimension >                OutputImageType;
+	typedef itk::ImageFileWriter< FixedImageType >                  WriterType;
+	typedef itk::ImageFileWriter< ImageMaskType >                   MaskWriterType;
 
-	typedef itk::ResampleImageFilter<
-		MovingImageType,
-		FixedImageType >    ResampleFilterType;
+	typedef itk::ResampleImageFilter<MovingImageType, FixedImageType >    ResampleFilterType;
+	typedef itk::ResampleImageFilter<ImageMaskType, ImageMaskType>		  ResampleMaskFilterType;
 
+	ResampleFilterType::Pointer resampler = ResampleFilterType::New();
+	ResampleMaskFilterType::Pointer mask_resampler = ResampleMaskFilterType::New();
 	ResampleFilterType::Pointer IsoAlignment = ResampleFilterType::New();
 
 	//typedef itk::ExtractImageFilter<FixedImageType, FixedImageType> CropFixedFilterType;

@@ -415,6 +415,7 @@ _3DRegistration::_3DRegistration(int argc, char *argv[])
 			this->ok = true;
 			this->movingMaskfilename = argv[1];
 			this->moving_mask = true;
+			this->OutputMaskfilename = itksys::SystemTools::GetFilenameWithoutLastExtension(this->movingMaskfilename) + "_registered" + itksys::SystemTools::GetFilenameLastExtension(this->movingMaskfilename);
 			argc--; argv++;
 			continue;
 		}
@@ -605,8 +606,6 @@ bool _3DRegistration::StartRegistration()
 	std::cout << "Matrix = " << std::endl << matrix << std::endl;
 	std::cout << "Offset = " << std::endl << offset << std::endl;
 
-	ResampleFilterType::Pointer resampler = ResampleFilterType::New();
-
 	resampler->SetTransform(finalTransform);
 	//resampler->SetInput(movingImage);
 	resampler->SetInput(movingImageReader->GetOutput());
@@ -641,13 +640,13 @@ bool _3DRegistration::StartRegistration()
 	resampler->SetOutputSpacing(this->FinalMovingSpacing);
 	resampler->SetOutputDirection(fixedImage->GetDirection());
 
+	/*************/
+	//Writing registered image
 
-	WriterType::Pointer      writer = WriterType::New();
-	//CastFilterType::Pointer  caster =  CastFilterType::New();
+	WriterType::Pointer writer = WriterType::New();
 
 	writer->SetFileName(Outputfilename);
 
-	//caster->SetInput( resampler->GetOutput() );
 	outputImage = resampler->GetOutput(); // link the output image to the outgoing pointer
 	writer->SetInput(resampler->GetOutput());
 	try
@@ -659,11 +658,44 @@ bool _3DRegistration::StartRegistration()
 	}
 	catch (itk::ExceptionObject& error)
 	{
-		std::cerr << "ExceptionObject caught !" << std::endl;
+		std::cerr << "ExceptionObject caught during registered CBCT writing !" << std::endl;
 		std::cerr << error << std::endl;
 		return EXIT_FAILURE;
 	}
+	movingImage = resampler->GetOutput();
+	/*************/
+	/*************/
+	//Writing the moving mask to the new position if it's provided
+	if (this->moving_mask)
+	{
+		ResampleFilterType::Pointer resampler = ResampleFilterType::New();
 
+		mask_resampler->SetInput(movingMask);
+		mask_resampler->SetReferenceImage(movingImage);
+		mask_resampler->SetTransform(finalTransform);
+		mask_resampler->UseReferenceImageOn();
+
+		MaskWriterType::Pointer mask_writer = MaskWriterType::New();
+
+		mask_writer->SetFileName(this->OutputMaskfilename);
+
+		mask_writer->SetInput(mask_resampler->GetOutput());
+		try
+		{
+			std::cout << "Writing registered Moving Image Mask\n";
+			timer.Start("WriteMovingMask");
+			mask_writer->Update();
+			timer.Stop("WriteMovingMask");
+		}
+		catch (itk::ExceptionObject& error)
+		{
+			std::cerr << "ExceptionObject caught during registered mask writing !" << std::endl;
+			std::cerr << error << std::endl;
+			return EXIT_FAILURE;
+		}
+	}
+	movingMask = mask_resampler->GetOutput();
+	/*************/
 	//std::ofstream parametersFile;
 	//parametersFile.open(OutputTransformfilename);
 	parametersFile << std::endl << std::endl;
@@ -1028,6 +1060,7 @@ bool _3DRegistration::Initialize()
 			std::cout << "Reading Fixed Image Mask" << std::endl;
 			timer.Start("ReadCTMask");
 			fixedMaskReader->Update();
+			fixedMask = fixedMaskReader->GetOutput();
 			std::cout << "Done\n";
 			timer.Stop("ReadCTMask");
 
@@ -1038,7 +1071,7 @@ bool _3DRegistration::Initialize()
 			std::cerr << err << std::endl;
 			return EXIT_FAILURE;
 		}
-		spatialObjectFixedMask->SetImage(fixedMaskReader->GetOutput());
+		spatialObjectFixedMask->SetImage(fixedMask);
 		try
 		{
 			//std::cout << "Reading Moving Image Mask" << std::endl;
@@ -1065,6 +1098,7 @@ bool _3DRegistration::Initialize()
 			std::cout << "Reading Moving Image Mask" << std::endl;
 			timer.Start("ReadCBCTMask");
 			movingMaskReader->Update();
+			movingMask = movingMaskReader->GetOutput();
 			std::cout << "Done\n";
 			timer.Stop("ReadCBCTMask");
 
@@ -1075,7 +1109,7 @@ bool _3DRegistration::Initialize()
 			std::cerr << err << std::endl;
 			return EXIT_FAILURE;
 		}
-		spatialObjectMovingMask->SetImage(movingMaskReader->GetOutput());
+		spatialObjectMovingMask->SetImage(movingMask);
 		try
 		{
 			//std::cout << "Reading Moving Image Mask" << std::endl;
